@@ -6,9 +6,9 @@ BUCKET=imaging-platform
 
 MAXPROCS=3 # m4.xlarge has 4 cores; keep 1 free
 
-mkdir -p ~/ebs_tmp/${PROJECT_NAME}/workspace/
+mkdir -p ~/efs/${PROJECT_NAME}/workspace/
 
-cd ~/ebs_tmp/${PROJECT_NAME}/workspace/
+cd ~/efs/${PROJECT_NAME}/workspace/
 
 mkdir -p log/${BATCH_ID}
 
