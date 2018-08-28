@@ -13,3 +13,6 @@ cd ~/efs/${PROJECT_NAME}/workspace/
 mkdir -p log/${BATCH_ID}
 
 PIPELINE_SET=cellpainting_ipsc_20x_phenix_with_bf_bin1
+
+PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
+
