@@ -76,7 +76,7 @@ images %>%
 ```
 
 ```{sh}
-wget -i images_to_download.txt
+#wget -i images_to_download.txt
 ```
 
 ```{r}
