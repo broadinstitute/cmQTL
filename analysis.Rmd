@@ -1,0 +1,111 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r message=FALSE}
+library(tidyverse)
+library(magrittr)
+library(randomForest)
+
+```
+
+
+```{r message=FALSE}
+normalized <- read_csv("../../backend/PILOT_1/BR00098071/BR00098071_normalized.csv")
+
+variables <- str_subset(names(normalized), "^Cells|^Nuclei|^Cytoplasm")
+```
+
+
+```{r}
+cleaned <-
+  cytominer::variable_select(
+    population = normalized,
+    variables = variables,
+    operation = "drop_na_columns"
+)
+
+variables <- str_subset(names(cleaned), "^Cells|^Nuclei|^Cytoplasm")
+
+```
+
+```{r}
+selected <-
+  cytominer::variable_select(
+    population = cleaned,
+    variables = variables,
+    sample = cleaned,
+    operation = "variance_threshold"
+  ) %>%
+  dplyr::collect()
+
+variables <- str_subset(names(selected), "^Cells|^Nuclei|^Cytoplasm")
+
+```
+
+
+```{r}
+profiles <- selected
+
+rf <- randomForest(as.factor(Metadata_cell_line) ~ ., 
+                   data = profiles %>% select(matches("Metadata_cell_line|^Cells|^Cytoplasm|^Nuclei")), 
+                   ntree = 1000,
+                   keep.forest = FALSE, 
+                   importance = TRUE)
+
+variable_importance <- as.data.frame(importance(rf))
+
+```
+
+
+```{r}
+ggplot(variable_importance, 
+       aes(MeanDecreaseAccuracy, MeanDecreaseGini)) + 
+  geom_hex()
+
+rf_variables <- 
+  variable_importance %>%
+  rownames_to_column("variable")  %>%
+  filter(MeanDecreaseAccuracy > 4) %>%
+  extract2("variable")
+
+rf_selected_profiles <-
+  profiles %>%
+  select(matches("^Metadata"), one_of(rf_variables))
+
+rf_selected_profiles %>%
+  write_csv("rf_selected_profiles.csv")
+
+```
+
+
+
+Calculate replicate correlation of all compounds at 10um 
+
+```{r}
+
+f_replicate_correlation <- function(df) {
+  cormat <- 
+    df %>%
+    select(matches("^PC")) %>%
+    t() %>%
+    cor(., method = "pearson") 
+
+  quantile(cormat[upper.tri(cormat)], c(.75), names = FALSE)
+  
+}
+
+repcor_df <-
+  df %>% 
+  select(Metadata_Plate_Map_Name, Metadata_Well, Metadata_broad_sample, Metadata_mmoles_per_liter, matches("^PC")) %>%
+  filter(Metadata_mmoles_per_liter > 9 & Metadata_mmoles_per_liter < 11) %>%
+  nest(-Metadata_Plate_Map_Name, -Metadata_Well, -Metadata_broad_sample, -Metadata_mmoles_per_liter) %>%
+  mutate(cc_q75 = map(data, f_replicate_correlation)) %>%
+  select(-data) %>%
+  unnest()
+```
+
+```
+
