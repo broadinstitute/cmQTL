@@ -8,12 +8,11 @@ output: html_notebook
 library(tidyverse)
 library(magrittr)
 library(randomForest)
-
 ```
 
 
 ```{r message=FALSE}
-normalized <- read_csv("../../backend/PILOT_1/BR00098071/BR00098071_normalized.csv")
+normalized <- read_csv("../../backend/PILOT_1/BR00098071/BR00098071_normalized.csv", progress = FALSE)
 
 variables <- str_subset(names(normalized), "^Cells|^Nuclei|^Cytoplasm")
 ```
@@ -81,31 +80,4 @@ rf_selected_profiles %>%
 ```
 
 
-
-Calculate replicate correlation of all compounds at 10um 
-
-```{r}
-
-f_replicate_correlation <- function(df) {
-  cormat <- 
-    df %>%
-    select(matches("^PC")) %>%
-    t() %>%
-    cor(., method = "pearson") 
-
-  quantile(cormat[upper.tri(cormat)], c(.75), names = FALSE)
-  
-}
-
-repcor_df <-
-  df %>% 
-  select(Metadata_Plate_Map_Name, Metadata_Well, Metadata_broad_sample, Metadata_mmoles_per_liter, matches("^PC")) %>%
-  filter(Metadata_mmoles_per_liter > 9 & Metadata_mmoles_per_liter < 11) %>%
-  nest(-Metadata_Plate_Map_Name, -Metadata_Well, -Metadata_broad_sample, -Metadata_mmoles_per_liter) %>%
-  mutate(cc_q75 = map(data, f_replicate_correlation)) %>%
-  select(-data) %>%
-  unnest()
-```
-
-```
 
