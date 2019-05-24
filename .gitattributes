@@ -1,1 +1,2 @@
 *.gz filter=lfs diff=lfs merge=lfs -text
+0.pilot-determine-conditions/data/*.csv filter=lfs diff=lfs merge=lfs -text
