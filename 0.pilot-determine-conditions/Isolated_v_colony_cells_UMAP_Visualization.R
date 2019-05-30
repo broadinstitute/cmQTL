@@ -102,14 +102,14 @@ pdf("UMAP_alldata.pdf", width = 10, height = 10)
 par(mfrow = c(2,2))
 
 #color by isolated/colony
-label_vec <- c(rep(rgb(0.2,0.5,0.2,0.5), nrow(dat_colony_6hrs)), rep(rgb(0.6,0.2,0.2,0.5),nrow(dat_isolated_6hrs)),rep(rgb(0.2,0.5,0.2,0.5), nrow(dat_colony_24hrs)), rep(rgb(0.6,0.2,0.2,0.5),nrow(dat_isolated_24hrs)))
+label_vec <- c(rep(rgb(0.6,0.2,0.2,0.5), nrow(dat_colony_6hrs)), rep(rgb(0.2,0.5,0.2,0.5),nrow(dat_isolated_6hrs)),rep(rgb(0.6,0.2,0.2,0.5), nrow(dat_colony_24hrs)), rep(rgb(0.2,0.5,0.2,0.5),nrow(dat_isolated_24hrs)))
 plot(dat_prc_umap$layout[,1], dat_prc_umap$layout[,2], xlab= "UMAP 1", ylab= "UMAP 2", col = label_vec, pch = 19, main = "Isolated/Colony")
-legend("topright", col = c(rgb(0.2,0.5,0.2,0.5),rgb(0.6,0.2,0.2,0.5)), legend = c("colony","isolated"), bty = "n", pch = 19)
+legend("bottomright", col = c(rgb(0.2,0.5,0.2,0.5),rgb(0.6,0.2,0.2,0.5)), legend = c("isolated","colony"), bty = "n", pch = 19)
 
 #color by time point
-label_vec <- c(rep(rgb(0.2,0.5,0.2,0.5), nrow(dat_colony_6hrs) + nrow(dat_isolated_6hrs)), rep(rgb(0.6,0.2,0.2,0.5),nrow(dat_isolated_24hrs) + nrow(dat_colony_24hrs)))
+label_vec <- c(rep(rgb(0.2,0.2,0.5,0.5), nrow(dat_colony_6hrs) + nrow(dat_isolated_6hrs)), rep(rgb(0.6,0.5,0.4,0.5),nrow(dat_isolated_24hrs) + nrow(dat_colony_24hrs)))
 plot(dat_prc_umap$layout[,1], dat_prc_umap$layout[,2], xlab= "UMAP 1", ylab= "UMAP 2", col = label_vec, pch = 19, main = "Time Point")
-legend("topright", col = c(rgb(0.2,0.5,0.2,0.5),rgb(0.6,0.2,0.2,0.5)), legend = c("6 hours","24 hours"), bty = "n", pch = 19)
+legend("bottomright", col = c(rgb(0.2,0.2,0.5,0.5),rgb(0.6,0.5,0.4,0.5)), legend = c("6 hours","24 hours"), bty = "n", pch = 19)
 
 #color by density 
 densities <- dat_all$Metadata_plating_density
