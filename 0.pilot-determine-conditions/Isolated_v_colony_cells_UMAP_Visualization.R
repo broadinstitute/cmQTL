@@ -48,7 +48,7 @@ for (i in 1:length(data_files)){
   
   #color by cell type 
   celllines <- c(dat_isolated$Metadata_line_ID, dat_colony$Metadata_line_ID)
-  celllines_unique <- unique(celllines)
+  celllines_unique <- sort(unique(celllines),decreasing = F)
   mycols <- match(celllines, celllines_unique)
   mycols_key <- c(rgb(0.2,0.5,0.2,0.5), rgb(0.5,0.2,0.2,0.5), rgb(0.2,0.2,0.5,0.5), rgb(0.6,0.3,0.6,0.5), rgb(0.3,0.6,0.6,0.5), rgb(0.6,0.6,0.3,0.5))
   mycols <- mycols_key[mycols]
@@ -102,14 +102,14 @@ pdf("UMAP_alldata.pdf", width = 10, height = 10)
 par(mfrow = c(2,2))
 
 #color by isolated/colony
-label_vec <- c(rep(rgb(0.2,0.5,0.2,0.5), nrow(dat_colony_6hrs)), rep(rgb(0.6,0.2,0.2,0.5),nrow(dat_isolated_6hrs)),rep(rgb(0.2,0.5,0.2,0.5), nrow(dat_colony_24hrs)), rep(rgb(0.6,0.2,0.2,0.5),nrow(dat_isolated_24hrs)))
+label_vec <- c(rep(rgb(0.6,0.2,0.2,0.5), nrow(dat_colony_6hrs)), rep(rgb(0.2,0.5,0.2,0.5),nrow(dat_isolated_6hrs)),rep(rgb(0.6,0.2,0.2,0.5), nrow(dat_colony_24hrs)), rep(rgb(0.2,0.5,0.2,0.5),nrow(dat_isolated_24hrs)))
 plot(dat_prc_umap$layout[,1], dat_prc_umap$layout[,2], xlab= "UMAP 1", ylab= "UMAP 2", col = label_vec, pch = 19, main = "Isolated/Colony")
-legend("topright", col = c(rgb(0.2,0.5,0.2,0.5),rgb(0.6,0.2,0.2,0.5)), legend = c("colony","isolated"), bty = "n", pch = 19)
+legend("bottomright", col = c(rgb(0.2,0.5,0.2,0.5),rgb(0.6,0.2,0.2,0.5)), legend = c("isolated","colony"), bty = "n", pch = 19)
 
 #color by time point
-label_vec <- c(rep(rgb(0.2,0.5,0.2,0.5), nrow(dat_colony_6hrs) + nrow(dat_isolated_6hrs)), rep(rgb(0.6,0.2,0.2,0.5),nrow(dat_isolated_24hrs) + nrow(dat_colony_24hrs)))
+label_vec <- c(rep(rgb(0.2,0.2,0.5,0.5), nrow(dat_colony_6hrs) + nrow(dat_isolated_6hrs)), rep(rgb(0.6,0.5,0.4,0.5),nrow(dat_isolated_24hrs) + nrow(dat_colony_24hrs)))
 plot(dat_prc_umap$layout[,1], dat_prc_umap$layout[,2], xlab= "UMAP 1", ylab= "UMAP 2", col = label_vec, pch = 19, main = "Time Point")
-legend("topright", col = c(rgb(0.2,0.5,0.2,0.5),rgb(0.6,0.2,0.2,0.5)), legend = c("6 hours","24 hours"), bty = "n", pch = 19)
+legend("bottomright", col = c(rgb(0.2,0.2,0.5,0.5),rgb(0.6,0.5,0.4,0.5)), legend = c("6 hours","24 hours"), bty = "n", pch = 19)
 
 #color by density 
 densities <- dat_all$Metadata_plating_density
@@ -122,7 +122,7 @@ legend("bottomleft", col = mycols_key, legend = densities_uniq, bty = "n", pch =
 
 #color by cell line 
 celllines <- dat_all$Metadata_line_ID
-celllines_unique <- unique(celllines)
+celllines_unique <- sort(unique(celllines),decreasing = F)
 mycols <- match(celllines, celllines_unique)
 mycols_key <- c(rgb(0.2,0.5,0.2,0.5), rgb(0.5,0.2,0.2,0.5), rgb(0.2,0.2,0.5,0.5), rgb(0.6,0.3,0.6,0.5), rgb(0.3,0.6,0.6,0.5), rgb(0.6,0.6,0.3,0.5))
 mycols <- mycols_key[mycols]
@@ -130,4 +130,34 @@ plot(dat_prc_umap$layout[,1], dat_prc_umap$layout[,2], xlab= "UMAP 1", ylab= "UM
 legend("bottomleft", col = mycols_key, legend = c("A","B","C","D","E","F"), bty = "n", pch = 19)
 
 dev.off()
+
+##########################################################
+            
+######### Highlight optimal time point: density = 1000, time=6hrs  ########
+pdf("UMAP_highlight6hrs10Kcells.pdf", width = 10, height = 10)
+par(mfrow = c(2,1))
+#find 6hrs, 10K cells, everything else gray 
+w <- which(dat_all$Metadata_plating_density == 10000 & dat_all$Metadata_timepoint == 6)
+mycols <- rep(0,nrow(dat_all))
+mycols[-w] <- rgb(0.1,0.1,0.1,0.01)
+
+celllines <- dat_all$Metadata_line_ID[w]
+celllines_unique <- sort(unique(celllines),decreasing = F)
+mycols_CL <- match(celllines, celllines_unique)
+mycols_key <- c(rgb(0.2,0.5,0.2,0.5), rgb(0.5,0.2,0.2,0.5), rgb(0.2,0.2,0.5,0.5), rgb(0.6,0.3,0.6,0.5), rgb(0.3,0.6,0.6,0.5), rgb(0.6,0.6,0.3,0.5))
+mycols_CL <- mycols_key[mycols_CL]
+mycols[w] <- mycols_CL
+
+plot(dat_prc_umap$layout[-w,1], dat_prc_umap$layout[-w,2], xlab= "UMAP 1", ylab= "UMAP 2", col = mycols[-w], pch = 19, main = "Optimal: 6hrs,10Kcells")
+points(dat_prc_umap$layout[w,1], dat_prc_umap$layout[w,2], xlab= "UMAP 1", ylab= "UMAP 2", col = mycols[w], pch = 19, main = "Optimal: 6hrs,10Kcells")
+legend("bottomleft", col = mycols_key, legend = c("A","B","C","D","E","F"), bty = "n", pch = 19)
+
+#among these color by isolated/colony
+label_vec <- c(rep(rgb(0.6,0.2,0.2,0.5), nrow(dat_colony_6hrs)), rep(rgb(0.2,0.5,0.2,0.5),nrow(dat_isolated_6hrs)),rep(rgb(0.6,0.2,0.2,0.5), nrow(dat_colony_24hrs)), rep(rgb(0.2,0.5,0.2,0.5),nrow(dat_isolated_24hrs)))
+plot(dat_prc_umap$layout[-w,1], dat_prc_umap$layout[-w,2], xlab= "UMAP 1", ylab= "UMAP 2", col = rgb(0.1,0.1,0.1,0.01), pch = 19, main = "Optimal: 6hrs,10Kcells")
+points(dat_prc_umap$layout[w,1], dat_prc_umap$layout[w,2], xlab= "UMAP 1", ylab= "UMAP 2", col = label_vec[w], pch = 19, main = "Optimal: 6hrs,10Kcells")
+legend("bottomleft", col = c(rgb(0.2,0.5,0.2,0.5),rgb(0.6,0.2,0.2,0.5)), legend = c("isolated","colony"), bty = "n", pch = 19)
+
+dev.off()            
+        
 
