@@ -48,7 +48,7 @@ for (i in 1:length(data_files)){
   
   #color by cell type 
   celllines <- c(dat_isolated$Metadata_line_ID, dat_colony$Metadata_line_ID)
-  celllines_unique <- unique(celllines)
+  celllines_unique <- sort(unique(celllines),decreasing = F)
   mycols <- match(celllines, celllines_unique)
   mycols_key <- c(rgb(0.2,0.5,0.2,0.5), rgb(0.5,0.2,0.2,0.5), rgb(0.2,0.2,0.5,0.5), rgb(0.6,0.3,0.6,0.5), rgb(0.3,0.6,0.6,0.5), rgb(0.6,0.6,0.3,0.5))
   mycols <- mycols_key[mycols]
@@ -122,7 +122,7 @@ legend("bottomleft", col = mycols_key, legend = densities_uniq, bty = "n", pch =
 
 #color by cell line 
 celllines <- dat_all$Metadata_line_ID
-celllines_unique <- unique(celllines)
+celllines_unique <- sort(unique(celllines),decreasing = F)
 mycols <- match(celllines, celllines_unique)
 mycols_key <- c(rgb(0.2,0.5,0.2,0.5), rgb(0.5,0.2,0.2,0.5), rgb(0.2,0.2,0.5,0.5), rgb(0.6,0.3,0.6,0.5), rgb(0.3,0.6,0.6,0.5), rgb(0.6,0.6,0.3,0.5))
 mycols <- mycols_key[mycols]
