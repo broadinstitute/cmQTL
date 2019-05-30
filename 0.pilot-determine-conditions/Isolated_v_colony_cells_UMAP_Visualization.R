@@ -131,3 +131,33 @@ legend("bottomleft", col = mycols_key, legend = c("A","B","C","D","E","F"), bty 
 
 dev.off()
 
+##########################################################
+            
+######### Highlight optimal time point: density = 1000, time=6hrs  ########
+pdf("UMAP_highlight6hrs10Kcells.pdf", width = 10, height = 10)
+par(mfrow = c(2,1))
+#find 6hrs, 10K cells, everything else gray 
+w <- which(dat_all$Metadata_plating_density == 10000 & dat_all$Metadata_timepoint == 6)
+mycols <- rep(0,nrow(dat_all))
+mycols[-w] <- rgb(0.1,0.1,0.1,0.01)
+
+celllines <- dat_all$Metadata_line_ID[w]
+celllines_unique <- sort(unique(celllines),decreasing = F)
+mycols_CL <- match(celllines, celllines_unique)
+mycols_key <- c(rgb(0.2,0.5,0.2,0.5), rgb(0.5,0.2,0.2,0.5), rgb(0.2,0.2,0.5,0.5), rgb(0.6,0.3,0.6,0.5), rgb(0.3,0.6,0.6,0.5), rgb(0.6,0.6,0.3,0.5))
+mycols_CL <- mycols_key[mycols_CL]
+mycols[w] <- mycols_CL
+
+plot(dat_prc_umap$layout[-w,1], dat_prc_umap$layout[-w,2], xlab= "UMAP 1", ylab= "UMAP 2", col = mycols[-w], pch = 19, main = "Optimal: 6hrs,10Kcells")
+points(dat_prc_umap$layout[w,1], dat_prc_umap$layout[w,2], xlab= "UMAP 1", ylab= "UMAP 2", col = mycols[w], pch = 19, main = "Optimal: 6hrs,10Kcells")
+legend("bottomleft", col = mycols_key, legend = c("A","B","C","D","E","F"), bty = "n", pch = 19)
+
+#among these color by isolated/colony
+label_vec <- c(rep(rgb(0.6,0.2,0.2,0.5), nrow(dat_colony_6hrs)), rep(rgb(0.2,0.5,0.2,0.5),nrow(dat_isolated_6hrs)),rep(rgb(0.6,0.2,0.2,0.5), nrow(dat_colony_24hrs)), rep(rgb(0.2,0.5,0.2,0.5),nrow(dat_isolated_24hrs)))
+plot(dat_prc_umap$layout[-w,1], dat_prc_umap$layout[-w,2], xlab= "UMAP 1", ylab= "UMAP 2", col = rgb(0.1,0.1,0.1,0.01), pch = 19, main = "Optimal: 6hrs,10Kcells")
+points(dat_prc_umap$layout[w,1], dat_prc_umap$layout[w,2], xlab= "UMAP 1", ylab= "UMAP 2", col = label_vec[w], pch = 19, main = "Optimal: 6hrs,10Kcells")
+legend("bottomleft", col = c(rgb(0.2,0.5,0.2,0.5),rgb(0.6,0.2,0.2,0.5)), legend = c("isolated","colony"), bty = "n", pch = 19)
+
+dev.off()            
+        
+
