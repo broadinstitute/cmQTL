@@ -82,9 +82,15 @@ echo "cmqtlpl1.5-31-2019-mt cmqtlpl261-2019-mt"|tr " " "\n" > ${PLATES}
 # Follow these steps verbatim
 # https://cytomining.github.io/profiling-handbook/setup-jobs.html#illumination-correction
 # https://cytomining.github.io/profiling-handbook/setup-jobs.html#analysis
-# but change the docker image 
-# --cp_docker_image cellprofiler/cellprofiler:3.1.8
+# but change the docker image for both 
+# `--cp_docker_image cellprofiler/cellprofiler:3.1.8`
+# This errored but the config files got created without a hitch. See https://github.com/broadinstitute/cmQTL/issues/14#issuecomment-505551405
 
+# Copy the `dcp_config_files` directory to `cellpainting_scripts`
+cp ../2018_06_05_cmQTL/1.profile-cell-lines/dcp_config_files/* ../cellpainting_scripts/dcp_config_files
+
+# Follow these steps verbatim 
+# https://cytomining.github.io/profiling-handbook/run-jobs.html#run-illum-dcp
 
 ############################
 # NOTE: The steps below have not yet been run
