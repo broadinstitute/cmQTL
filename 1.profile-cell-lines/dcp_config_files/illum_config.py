@@ -4,7 +4,7 @@
 APP_NAME = '2018_06_05_cmQTL_Illum'                # Used to generate derivative names unique to the application.
 
 # DOCKER REGISTRY INFORMATION:
-DOCKERHUB_TAG = 'bethcimini/distributed-cellprofiler:1.2.0_3.1.8'
+DOCKERHUB_TAG = 'cellprofiler/distributed-cellprofiler:1.2.0_3.1.8'
 
 # AWS GENERAL SETTINGS:
 AWS_REGION = 'us-east-1'
