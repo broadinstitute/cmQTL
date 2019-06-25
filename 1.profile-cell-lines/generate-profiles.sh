@@ -48,6 +48,7 @@ mkdir ~/ebs_tmp
 cd ~/efs/${PROJECT_NAME}/workspace/
 mkdir -p software
 cd software
+
 # check whether the repos below already exist
 # If they do, run `git status` to make sure that the files haven't been modified
 # If they don't exist then clone as below
@@ -56,22 +57,26 @@ git clone git@github.com:broadinstitute/pe2loaddata.git
 git clone git@github.com:broadinstitute/cytominer_scripts.git
 git clone git@github.com:CellProfiler/Distributed-CellProfiler.git
 
+# Copy config_files/config.yml to cellpainting_scripts/ (overwrite the existing file)
+      
+      
+# Follow these steps verbatim
+# https://cytomining.github.io/profiling-handbook/configure-tools-to-process-images.html#setup-distributed-cellprofiler
+# https://cytomining.github.io/profiling-handbook/setup-pipelines-and-images.html#get-cellprofiler-pipelines
 
-# The config file in `cellpainting_scripts` was modified because the channel name had changed
-# cd cellpainting_scripts; git diff; cd -
-# diff --git a/config.yml b/config.yml
-# index 23d7c3c..5403e10 100644
-# --- a/config.yml
-# +++ b/config.yml
-# @@ -3,8 +3,8 @@ channels:
-#      Alexa 568: OrigAGP
-#      Alexa 647: OrigMito
-#      Alexa 488: OrigER
-# -    488 long: OrigRNA
-# -    Brightfieldlow: OrigBrightfield
-# +    Alexa 488 long: OrigRNA
-# +    Brightfield: OrigBrightfield
+# Specify pipeline set
+PIPELINE_SET=cellpainting_ipsc_20x_phenix_with_bf_bin1_cp3/
 
+# Follow these steps verbatim
+# https://cytomining.github.io/profiling-handbook/setup-pipelines-and-images.html#prepare-images
+
+# Create list of plates
+mkdir -p scratch/${BATCH_ID}/
+PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
+echo "cmqtlpl1.5-31-2019-mt cmqtlpl261-2019-mt"|tr " " "\n" > ${PLATES}
+
+# Follow these steps verbatim
+# https://cytomining.github.io/profiling-handbook/setup-pipelines-and-images.html#create-loaddata-csvs
 
 ############################
 # NOTE: The steps below have not yet been run

@@ -1,0 +1,30 @@
+channels:
+    HOECHST 33342: OrigDNA
+    Alexa 568: OrigAGP
+    Alexa 647: OrigMito
+    Alexa 488: OrigER
+    488 long: OrigRNA
+    Brightfield CP: OrigBrightfield
+metadata:
+    Row: Row
+    Col: Col
+    FieldID: FieldID
+    ChannelID: ChannelID
+    ChannelName: ChannelName
+    ImageResolutionX: ImageResolutionX
+    ImageResolutionY: ImageResolutionY
+    ImageSizeX: ImageSizeX
+    ImageSizeY: ImageSizeY
+    BinningX: BinningX
+    BinningY: BinningY
+    MaxIntensity: MaxIntensity
+    PositionX: PositionX
+    PositionY: PositionY
+    PositionZ: PositionZ
+    AbsPositionZ: AbsPositionZ
+    AbsTime: AbsTime
+    MainExcitationWavelength: MainExcitationWavelength
+    MainEmissionWavelength: MainEmissionWavelength
+    ObjectiveMagnification: ObjectiveMagnification
+    ObjectiveNA: ObjectiveNA
+    ExposureTime: ExposureTime
