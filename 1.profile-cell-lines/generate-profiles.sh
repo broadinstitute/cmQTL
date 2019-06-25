@@ -59,7 +59,6 @@ git clone git@github.com:CellProfiler/Distributed-CellProfiler.git
 
 # Copy config_files/config.yml to cellpainting_scripts/ (overwrite the existing file)
       
-      
 # Follow these steps verbatim
 # https://cytomining.github.io/profiling-handbook/configure-tools-to-process-images.html#setup-distributed-cellprofiler
 # https://cytomining.github.io/profiling-handbook/setup-pipelines-and-images.html#get-cellprofiler-pipelines
@@ -77,6 +76,15 @@ echo "cmqtlpl1.5-31-2019-mt cmqtlpl261-2019-mt"|tr " " "\n" > ${PLATES}
 
 # Follow these steps verbatim
 # https://cytomining.github.io/profiling-handbook/setup-pipelines-and-images.html#create-loaddata-csvs
+# Note: the cellpainting_scripts/config.ini file had not been set up correctly, and pe2loaddata got stuck
+# so I did it by hand (i.e. `parallel --dry-run` and then run each command)
+
+# Follow these steps verbatim
+# https://cytomining.github.io/profiling-handbook/setup-jobs.html#illumination-correction
+# https://cytomining.github.io/profiling-handbook/setup-jobs.html#analysis
+# but change the docker image 
+# --cp_docker_image cellprofiler/cellprofiler:3.1.8
+
 
 ############################
 # NOTE: The steps below have not yet been run
