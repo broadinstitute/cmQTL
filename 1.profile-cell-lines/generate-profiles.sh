@@ -173,7 +173,7 @@ mkdir -p ../../parameters/${BATCH_ID}/sample/
   --operations variance_threshold
 
 # Step 5.3 - Remove features known to be noisy
-SAMPLE_PLATE_ID='BR00103267'
+SAMPLE_PLATE_ID='cmqtlpl261-2019-mt'
 echo "variable" > ../../parameters/${BATCH_ID}/variable_selection/manual.txt
 
 head -1 \
