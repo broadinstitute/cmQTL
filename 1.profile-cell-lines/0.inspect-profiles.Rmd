@@ -1,0 +1,62 @@
+---
+title: "Inspect profiles"
+subtitle: "cmQTL project"
+author: "Gregory Way and Shantanu Singh"
+date: "June 2019"
+output: github_document
+---
+
+## Load libraries
+
+```{r message=FALSE}
+library(ggplot2)
+library(magrittr)
+library(tidyverse)
+```
+
+## Read profiles
+
+Load pilot data for testing
+
+```{r message=FALSE}
+profiles <- read_csv("../../../backend/PILOT_1/BR00098071/BR00098071_normalized_variable_selected.csv", progress = FALSE)
+
+variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
+```
+
+```{r}
+profiles %<>% 
+  rename(Metadata_line_ID = Metadata_cell_line) %>%
+  rename(Metadata_plating_density = Metadata_seeding_density_level) %>%
+  select(Metadata_Plate, Metadata_Well, Metadata_line_ID, Metadata_plating_density, one_of(variables))
+  
+profiles %>% select(matches("Metadata_")) %>% head()
+```
+
+## How many replicates?
+
+```{r}
+profiles %>%
+  group_by(Metadata_Plate, Metadata_line_ID) %>%
+  tally()
+```
+
+```{r}
+
+profiles0 <- profiles %>% filter(Metadata_Plate == "BR00098071")
+
+p <- 
+  platetools::raw_map(data =
+                        profiles$Metadata_line_ID,
+                      well = profiles$Metadata_Well,
+                      plate = 384) +
+  ggtitle("cmqtlpl1.5-31-2019-mt (dummy)") +
+  theme_dark() +
+  scale_fill_discrete()
+
+print(p)
+
+out_file <- file.path("figures", "cmqtlpl1.5-31-2019-mt_layout.png")
+ggsave(out_file, p, height = 4, width = 6)
+```
+
