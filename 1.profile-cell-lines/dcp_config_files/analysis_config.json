@@ -2,7 +2,7 @@
   "IamFleetRole": "arn:aws:iam::385009899373:role/aws-ec2-spot-fleet-role",
   "AllocationStrategy": "lowestPrice",
   "TargetCapacity": 235,
-  "SpotPrice": "0.10",
+  "SpotPrice": "0.20",
   "ValidFrom": "2018-03-20T20:28:54Z",
   "ValidUntil": "2019-07-20T20:28:54Z",
   "TerminateInstancesWithExpiration": true,
