@@ -14,9 +14,11 @@ library(magrittr)
 library(tidyverse)
 ```
 
-## Read profiles
+## Data overview
 
-Load pilot data for testing
+### Read profiles
+
+Load pilot data for testing (this will be swapped out for the real data)
 
 ```{r message=FALSE}
 profiles <- read_csv("../../../backend/PILOT_1/BR00098071/BR00098071_normalized_variable_selected.csv", progress = FALSE)
@@ -26,14 +28,24 @@ variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
 
 ```{r}
 profiles %<>% 
-  rename(Metadata_line_ID = Metadata_cell_line) %>%
+  mutate(Metadata_line_ID = recode(Metadata_cell_line,
+                                   "A" = 1, "B" = 2, "C" = 3, "D" = 4, "E" = 5, "F" = 6)) %>%
   rename(Metadata_plating_density = Metadata_seeding_density_level) %>%
   select(Metadata_Plate, Metadata_Well, Metadata_line_ID, Metadata_plating_density, one_of(variables))
   
+
 profiles %>% select(matches("Metadata_")) %>% head()
 ```
 
-## How many replicates?
+### How many replicates?
+
+```{r}
+metadata <- read_tsv("../../../metadata/2019_06_10_Batch3/platemap/cmQTL_plate1_5.31.2019.txt")
+
+metadata %>% 
+  group_by(line_ID) %>%
+  tally()
+```
 
 ```{r}
 profiles %>%
@@ -41,15 +53,20 @@ profiles %>%
   tally()
 ```
 
-```{r}
 
+## Is cell plating density correlated with the order of plating a cell line?
+
+### Display platemap
+
+```{r}
 profiles0 <- profiles %>% filter(Metadata_Plate == "BR00098071")
 
 p <- 
   platetools::raw_map(data =
-                        profiles$Metadata_line_ID,
+                      as.character(profiles$Metadata_line_ID),
                       well = profiles$Metadata_Well,
                       plate = 384) +
+  
   ggtitle("cmqtlpl1.5-31-2019-mt (dummy)") +
   theme_dark() +
   scale_fill_discrete()
@@ -58,5 +75,201 @@ print(p)
 
 out_file <- file.path("figures", "cmqtlpl1.5-31-2019-mt_layout.png")
 ggsave(out_file, p, height = 4, width = 6)
+```
+### Plot cell counts on plate map
+
+```{r}
+
+db <- src_sqlite(path = "../../../backend/PILOT_1/BR00098071/BR00098071.sqlite")
+
+cell_count <- tbl(src = db, "image") %>%
+  select(TableNumber, ImageNumber, Metadata_Plate, Metadata_Well, Count_Cells) %>%
+  collect() %>%
+  group_by(Metadata_Plate, Metadata_Well) %>%
+  summarise(Count_Cells = sum(Count_Cells))
+
+cell_count %<>%
+  inner_join(
+    profiles %>% 
+      select(matches("^Metadata_")) %>%
+      distinct(),
+    by = c("Metadata_Plate", "Metadata_Well")
+  )
+  
+p <- 
+  platetools::raw_map(data =
+                      cell_count$Count_Cells,
+                      well = cell_count$Metadata_Well,
+                      plate = 384) +
+  
+  ggtitle("cmqtlpl1.5-31-2019-mt (dummy)") +
+  theme_dark() +
+  scale_fill_continuous()
+
+print(p)
+```
+
+### Plot cell count vs cell id
+
+
+```{r}
+p <- 
+  ggplot(cell_count, 
+         aes(Metadata_line_ID, Count_Cells)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  xlab("cell line") + 
+  ylab("cell count") +
+  ggtitle("Relationship between cell line id and cell count",
+          subtitle = sprintf("Pearson correlation = %.2f",
+                             with(cell_count, cor(Count_Cells, Metadata_line_ID))
+                             )
+          )
+
+p
+  
+```
+
+## Does cell plating density drive similarities?
+
+### Aggregate profiles and cell counts, grouping by cell line and plating density
+
+```{r}
+variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
+
+profiles %<>%
+  cytominer::aggregate(variables = variables, 
+                       strata = c("Metadata_line_ID", "Metadata_plating_density"),
+                       operation = "median")
+
+cell_count %<>%
+  cytominer::aggregate(variables = c("Count_Cells"), 
+                       strata = c("Metadata_line_ID", "Metadata_plating_density"),
+                       operation = "median")
+  
+```
+
+### Measure similarity between profiles
+
+```{r}
+# get data matrix
+data_matrix <-
+  profiles %>%
+  select(-matches("Metadata"))
+
+# get metadata
+metadata <-
+  profiles %>%
+  select(matches("Metadata")) %>%
+  rowid_to_column(var = "id")
+
+# measure similarities between treatments
+similarity <- cor(t(data_matrix)) 
+
+colnames(similarity) <- seq(1, ncol(similarity))
+
+similarity %<>% 
+  as_tibble() %>% 
+  rowid_to_column(var = "id1") %>% 
+  gather(id2, correlation, -id1) %>% 
+  mutate(id2 = as.integer(id2)) %>%
+  filter(id1 > id2) %>% 
+  arrange(desc(correlation))
+
+# annotate the similarities data frame
+similarity %<>%
+  inner_join(metadata %>% 
+               select(id, 
+                      Metadata_line_ID,
+                      Metadata_plating_density), 
+             by = c("id1" = "id")) %>% 
+  rename(Metadata_line_ID1 = Metadata_line_ID, 
+         Metadata_plating_density1 = Metadata_plating_density)  %>%
+  inner_join(metadata %>% 
+               select(id, 
+                      Metadata_line_ID,
+                      Metadata_plating_density), 
+             by = c("id2" = "id")) %>%
+  rename(Metadata_line_ID2 = Metadata_line_ID, 
+         Metadata_plating_density2 = Metadata_plating_density) %>% 
+  arrange(desc(correlation))
+  
+```
+
+### Measure absolute difference between profiles
+
+```{r}
+# get data matrix
+data_matrix <-
+  cell_count %>%
+  select(-matches("Metadata"))
+
+# get metadata
+metadata <-
+  cell_count %>%
+  select(matches("Metadata")) %>%
+  rowid_to_column(var = "id")
+
+# measure similarities between treatments
+count_similarity <- abs(outer(data_matrix$Count_Cells, data_matrix$Count_Cells,FUN = "-"))
+
+colnames(count_similarity) <- seq(1, ncol(count_similarity))
+
+count_similarity %<>% 
+  as_tibble() %>% 
+  rowid_to_column(var = "id1") %>% 
+  gather(id2, cell_count_abs_diff, -id1) %>% 
+  mutate(id2 = as.integer(id2)) %>%
+  filter(id1 > id2) %>% 
+  arrange(desc(cell_count_abs_diff))
+
+# annotate the similarities data frame
+count_similarity %<>%
+  inner_join(metadata %>% 
+               select(id, 
+                      Metadata_line_ID,
+                      Metadata_plating_density), 
+             by = c("id1" = "id")) %>% 
+  rename(Metadata_line_ID1 = Metadata_line_ID, 
+         Metadata_plating_density1 = Metadata_plating_density)  %>%
+  inner_join(metadata %>% 
+               select(id, 
+                      Metadata_line_ID,
+                      Metadata_plating_density), 
+             by = c("id2" = "id")) %>%
+  rename(Metadata_line_ID2 = Metadata_line_ID, 
+         Metadata_plating_density2 = Metadata_plating_density) %>% 
+  arrange(desc(cell_count_abs_diff))
+```
+
+### Combine 
+
+```{r}
+similarity %<>% 
+  inner_join(count_similarity,
+             by = c("id1", 
+                    "id2", 
+                    "Metadata_line_ID1", 
+                    "Metadata_plating_density1", 
+                    "Metadata_line_ID2", 
+                    "Metadata_plating_density2"))
+```
+
+### Report relationship between profiles similarity and cell count similarity
+
+```{r} 
+p <- 
+  ggplot(similarity, aes(correlation, cell_count_abs_diff)) + 
+  geom_point() +
+  xlab("Pearson correlation between profiles") +
+  ylab("Abs. difference between cell counts") +
+  ggtitle("Relationship between profiles similarity and cell count similarity",
+          subtitle = sprintf("Pearson correlation = %.2f",
+                             with(similarity, cor(correlation, cell_count_abs_diff))
+                             )
+          )
+
+p
+
 ```
 
