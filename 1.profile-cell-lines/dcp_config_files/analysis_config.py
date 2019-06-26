@@ -14,7 +14,7 @@ AWS_BUCKET = 'imaging-platform'
 
 # EC2 AND ECS INFORMATION:
 ECS_CLUSTER = 'default'
-CLUSTER_MACHINES = 150
+CLUSTER_MACHINES = 235
 TASKS_PER_MACHINE = 1
 EBS_VOL_SIZE = 61                       # In GB.  Minimum allowed is 22.
 
