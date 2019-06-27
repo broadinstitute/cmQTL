@@ -211,6 +211,7 @@ parallel \
 
 # Follow only the first part of this step 
 # https://cytomining.github.io/profiling-handbook/create-profiles.html#convert-to-other-formats
+# i.e.:
 
 parallel \
   --no-run-if-empty \
