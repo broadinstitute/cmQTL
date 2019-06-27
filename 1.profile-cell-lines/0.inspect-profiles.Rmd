@@ -21,18 +21,18 @@ library(tidyverse)
 Load pilot data for testing (this will be swapped out for the real data)
 
 ```{r message=FALSE}
-profiles <- read_csv("../../../backend/PILOT_1/BR00098071/BR00098071_normalized_variable_selected.csv", progress = FALSE)
+profiles <- read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt_normalized_variable_selected.csv", progress = FALSE)
 
 variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
 ```
 
 ```{r}
-profiles %<>% 
-  mutate(Metadata_line_ID = recode(Metadata_cell_line,
-                                   "A" = 1, "B" = 2, "C" = 3, "D" = 4, "E" = 5, "F" = 6)) %>%
-  rename(Metadata_plating_density = Metadata_seeding_density_level) %>%
-  select(Metadata_Plate, Metadata_Well, Metadata_line_ID, Metadata_plating_density, one_of(variables))
-  
+# profiles %<>% 
+#   mutate(Metadata_line_ID = recode(Metadata_cell_line,
+#                                    "A" = 1, "B" = 2, "C" = 3, "D" = 4, "E" = 5, "F" = 6)) %>%
+#   rename(Metadata_plating_density = Metadata_seeding_density_level) %>%
+#   select(Metadata_Plate, Metadata_Well, Metadata_line_ID, Metadata_plating_density, one_of(variables))
+#   
 
 profiles %>% select(matches("Metadata_")) %>% head()
 ```
@@ -42,8 +42,19 @@ profiles %>% select(matches("Metadata_")) %>% head()
 ```{r}
 metadata <- read_tsv("../../../metadata/2019_06_10_Batch3/platemap/cmQTL_plate1_5.31.2019.txt")
 
+metadata %<>%
+  rename(
+  Metadata_Plate_Map_Name = plate_map_name,
+  Metadata_Well = well_position,
+  Metadata_plating_density = plating_density,
+  Metadata_line_ID = line_ID
+) %>%
+  mutate(
+    Metadata_Plate = "cmqtlpl1.5-31-2019-mt"
+  )
+
 metadata %>% 
-  group_by(line_ID) %>%
+  group_by(Metadata_line_ID) %>%
   tally()
 ```
 
@@ -59,8 +70,6 @@ profiles %>%
 ### Display platemap
 
 ```{r}
-profiles0 <- profiles %>% filter(Metadata_Plate == "BR00098071")
-
 p <- 
   platetools::raw_map(data =
                       as.character(profiles$Metadata_line_ID),
@@ -80,19 +89,20 @@ ggsave(out_file, p, height = 4, width = 6)
 
 ```{r}
 
-db <- src_sqlite(path = "../../../backend/PILOT_1/BR00098071/BR00098071.sqlite")
+# Generate cell counts directly from Image.csv files because the SQLite is too large to load
+# 
+# find../../../analysis/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/analysis/ -name Image.csv -exec csvcut -c Metadata_Well,Count_Cells {} \; > data/count.csv
+# cat <(echo Metadata_Well,Count_Cells) <(grep -v "Metadata_Well,Count_Cells" count.csv|sort) > data/cmqtlpl1.5-31-2019-mt_count.csv
+# verify that `data/cmqtlpl1.5-31-2019-mt_count.csv` looks right and then delete `data/count.csv`
 
-cell_count <- tbl(src = db, "image") %>%
-  select(TableNumber, ImageNumber, Metadata_Plate, Metadata_Well, Count_Cells) %>%
-  collect() %>%
+cell_count <-
+  read_csv("data/cmqtlpl1.5-31-2019-mt_count.csv") %>%
   group_by(Metadata_Plate, Metadata_Well) %>%
-  summarise(Count_Cells = sum(Count_Cells))
+  summarize(Count_Cells = sum(Count_Cells))
 
 cell_count %<>%
   inner_join(
-    profiles %>% 
-      select(matches("^Metadata_")) %>%
-      distinct(),
+    metadata,
     by = c("Metadata_Plate", "Metadata_Well")
   )
   
@@ -102,7 +112,7 @@ p <-
                       well = cell_count$Metadata_Well,
                       plate = 384) +
   
-  ggtitle("cmqtlpl1.5-31-2019-mt (dummy)") +
+  ggtitle("cmqtlpl1.5-31-2019-mt cell counts") +
   theme_dark() +
   scale_fill_continuous()
 
@@ -116,11 +126,11 @@ print(p)
 p <- 
   ggplot(cell_count, 
          aes(Metadata_line_ID, Count_Cells)) + 
-  geom_point() + 
+  geom_boxplot(aes(as.factor(Metadata_line_ID), Count_Cells)) + 
   geom_smooth(method = "lm") +
   xlab("cell line") + 
   ylab("cell count") +
-  ggtitle("Relationship between cell line id and cell count",
+  ggtitle("Relationship between cell line id and cell count (cmqtlpl1.5-31-2019-mt)",
           subtitle = sprintf("Pearson correlation = %.2f",
                              with(cell_count, cor(Count_Cells, Metadata_line_ID))
                              )
