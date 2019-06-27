@@ -21,19 +21,12 @@ library(tidyverse)
 Load pilot data for testing (this will be swapped out for the real data)
 
 ```{r message=FALSE}
-profiles <- read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt_normalized_variable_selected.csv", progress = FALSE)
+profiles <- read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected.csv", progress = FALSE)
 
 variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
 ```
 
 ```{r}
-# profiles %<>% 
-#   mutate(Metadata_line_ID = recode(Metadata_cell_line,
-#                                    "A" = 1, "B" = 2, "C" = 3, "D" = 4, "E" = 5, "F" = 6)) %>%
-#   rename(Metadata_plating_density = Metadata_seeding_density_level) %>%
-#   select(Metadata_Plate, Metadata_Well, Metadata_line_ID, Metadata_plating_density, one_of(variables))
-#   
-
 profiles %>% select(matches("Metadata_")) %>% head()
 ```
 
@@ -64,6 +57,25 @@ profiles %>%
   tally()
 ```
 
+### Audits
+
+What is the median replicate correlation for each cell line?
+
+```{r}
+audit <- read_csv("../../../audit/2019_06_10_Batch3/cmQTL_plate1_5.31.2019_audit.csv")
+
+audit_detailed <- read_csv("../../../audit/2019_06_10_Batch3/cmQTL_plate1_5.31.2019_audit_detailed.csv")
+
+p <- 
+  ggplot(audit_detailed,
+       aes(correlation)) + geom_histogram(binwidth = .05) +
+  geom_vline(xintercept = audit$null_threshold, color = "red") +
+  xlab("Median pearson correlation between replicates") +
+  ggtitle("Distribution of replicate correlation across all cell lines (cmqtlpl1.5-31-2019-mt)")
+
+p
+
+```
 
 ## Is cell plating density correlated with the order of plating a cell line?
 
@@ -75,7 +87,6 @@ p <-
                       as.character(profiles$Metadata_line_ID),
                       well = profiles$Metadata_Well,
                       plate = 384) +
-  
   ggtitle("cmqtlpl1.5-31-2019-mt (dummy)") +
   theme_dark() +
   scale_fill_discrete()
@@ -85,6 +96,7 @@ print(p)
 out_file <- file.path("figures", "cmqtlpl1.5-31-2019-mt_layout.png")
 ggsave(out_file, p, height = 4, width = 6)
 ```
+
 ### Plot cell counts on plate map
 
 ```{r}
@@ -139,6 +151,87 @@ p <-
 p
   
 ```
+
+```{r}
+p <- 
+  ggplot(audit_detailed,
+       aes(as.factor(Metadata_line_ID), correlation)) + 
+  geom_col() +
+  xlab("cell line") + 
+  ylab("Median pearson correlation between replicates") +
+  ggtitle("Relationship between cell line id and replicate correlation (cmqtlpl1.5-31-2019-mt)",
+          subtitle = sprintf("Pearson correlation = %.2f",
+                             with(audit_detailed, cor(Metadata_line_ID, correlation))
+                             )
+          )
+p
+
+df <- 
+  audit_detailed %>% 
+  inner_join(cell_count %>%
+               cytominer::aggregate(
+                 variables = c("Count_Cells"), 
+                 strata = c("Metadata_line_ID", "Metadata_plating_density"),
+                 operation = "median"),
+             by = c("Metadata_line_ID"))
+
+p <- 
+  ggplot(df,
+       aes(Count_Cells, correlation)) + 
+  geom_point() +
+  xlab("Cell count") + 
+  ylab("Median pearson correlation between replicates") +
+  ggtitle("Relationship between cell count and replicate correlation (cmqtlpl1.5-31-2019-mt)",
+          subtitle = sprintf("Pearson correlation = %.2f",
+                             with(df, cor(Count_Cells, correlation))
+                             )
+          )
+
+p
+```
+### Attach cell count and replicate correlation to profiles and save gct
+
+```{r}
+
+augmented_profiles <-
+  profiles %>% 
+  inner_join(df,
+             c("Metadata_Plate_Map_Name", "Metadata_plating_density", "Metadata_line_ID")) %>%
+  rename(Metadata_correlation = correlation,
+         Metadata_Count_Cells = Count_Cells) %>%
+  select(matches("^Metadata_"), everything())
+
+augmented_profiles %>%
+  write_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.csv")
+
+```
+
+
+```{sh}
+cd ../../cytominer_scripts
+
+Rscript csv2gct.R \
+  ../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.csv \
+  -o ../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.gct
+
+cd -
+```
+
+### Plate median replicate correlation on a plate map
+
+```{r}
+p <- 
+  platetools::raw_map(data = augmented_profiles$Metadata_correlation,
+                      well = augmented_profiles$Metadata_Well,
+                      plate = 384) +
+  
+  ggtitle("cmqtlpl1.5-31-2019-mt Median replicate correlation") +
+  theme_dark() +
+  scale_fill_continuous()
+
+print(p)
+```
+
 
 ## Does cell plating density drive similarities?
 
@@ -281,5 +374,40 @@ p <-
 
 p
 
+```
+## Clustering analysis via Morpheus
+
+Load ../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.gct in https://software.broadinstitute.org/morpheus/ and cluster
+
+![](figures/morpheus/cmqtlpl1.5-31-2019-mt-tight-clusters.png)<!-- -->
+
+![](figures/morpheus/cmqtlpl1.5-31-2019-mt-collapsed.png)<!-- -->
+
+### Inspect the tight cluster
+
+```{r}
+tight_cluster <- 
+  CePa::read.gct("figures/morpheus/tight_cluster.gct") %>%
+  as_data_frame() 
+
+tight_cluster <- 
+  tight_cluster[2,] %>% 
+  gather(k, v) %>% 
+  filter(v != "na") %>% 
+  extract2("v") 
+
+all_wells <- platetools::num_to_well(1:384, plate = 384)
+
+tight_cluster_flag <- all_wells %in% tight_cluster
+
+p <- 
+  platetools::raw_map(data = tight_cluster_flag,
+                      well = all_wells,
+                      plate = 384) +
+  ggtitle("Which wells are in the tight cluster?") +
+  theme_dark() +
+  scale_fill_discrete()
+
+print(p)
 ```
 
