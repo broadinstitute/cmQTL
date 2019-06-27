@@ -379,9 +379,13 @@ p
 
 Load ../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.gct in https://software.broadinstitute.org/morpheus/ and cluster
 
-![](figures/morpheus/cmqtlpl1.5-31-2019-mt-tight-clusters.png)<!-- -->
+```{r}
 
-![](figures/morpheus/cmqtlpl1.5-31-2019-mt-collapsed.png)<!-- -->
+```
+
+![](figures/morpheus/cmqtlpl1.5-31-2019-mt-tight-clusters.png)
+
+![](figures/morpheus/cmqtlpl1.5-31-2019-mt-collapsed.png)
 
 ### Inspect the tight cluster
 
