@@ -92,7 +92,7 @@ cp ../2018_06_05_cmQTL/1.profile-cell-lines/dcp_config_files/* ../cellpainting_s
 # Follow these steps verbatim 
 # https://cytomining.github.io/profiling-handbook/run-jobs.html#run-illum-dcp
 # https://cytomining.github.io/profiling-handbook/run-jobs.html#dcp
-
+# https://cytomining.github.io/profiling-handbook/create-profiles.html#create-database-backend
 
 ############################
 # NOTE: The steps below have not yet been run
@@ -104,6 +104,9 @@ cp ../2018_06_05_cmQTL/1.profile-cell-lines/dcp_config_files/* ../cellpainting_s
 ############################
 # NOTE - The annotate step creates `augmented` profiles in the `backend` folder
 # `augmented` profiles represent aggregated per-well data annotated with metadata
+# Follow this step with some modifications (see below)
+# https://cytomining.github.io/profiling-handbook/create-profiles.html#annotate
+
 # Retrieve metadata information
 aws s3 sync s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/metadata/${BATCH_ID}/ ~/efs/${PROJECT_NAME}/workspace/metadata/${BATCH_ID}/
 
@@ -126,6 +129,10 @@ parallel \
 ############################
 # Note - The normalize step creates `normalized` profiles in the `backend` folder
 # The step z-scores each feature using all wells (i.e. use all "non-dummy" wells)
+
+# Follow this step with some modifications (see below)
+# https://cytomining.github.io/profiling-handbook/create-profiles.html#normalize
+
 parallel \
   --no-run-if-empty \
   --eta \
@@ -141,22 +148,29 @@ parallel \
 ############################
 # Step 5 - Variable Selection
 ############################
+# Follow this step with some modifications (no replicate correlation step; see below)
+# https://cytomining.github.io/profiling-handbook/create-profiles.html#select-variables
+
 # Note - Variable selection uses both normalized and unnormalized data
 mkdir -p ../../parameters/${BATCH_ID}/sample/
+
+# In the sampling steps below, we specify replicates = 1 because there is only 1 
+# replicate plate per platemap. Currently, sampling replicates within a plate is
+# not supported in cytominer_scripts
 
 # Step 5.0 - Sample normalized and unnormalized data
 # Normalized
 ./sample.R \
   --batch_id ${BATCH_ID} \
   --pattern "_normalized.csv$" \
-  --replicates 2 \
+  --replicates 1 \
   --output ../../parameters/${BATCH_ID}/sample/${BATCH_ID}_normalized_sample.feather
 
 # Unnormalized
 ./sample.R \
   --batch_id ${BATCH_ID} \
   --pattern "_augmented.csv$" \
-  --replicates 2 \
+  --replicates 1 \
   --output ../../parameters/${BATCH_ID}/sample/${BATCH_ID}_augmented_sample.feather
 
 # Using the sampled feather files, perform a series of three variable selection steps
@@ -173,7 +187,7 @@ mkdir -p ../../parameters/${BATCH_ID}/sample/
   --operations variance_threshold
 
 # Step 5.3 - Remove features known to be noisy
-SAMPLE_PLATE_ID='cmqtlpl261-2019-mt'
+SAMPLE_PLATE_ID='cmqtlpl1.5-31-2019-mt'
 echo "variable" > ../../parameters/${BATCH_ID}/variable_selection/manual.txt
 
 head -1 \
@@ -194,3 +208,19 @@ parallel \
   --batch_id ${BATCH_ID} \
   --plate_id {1} \
   --filters variance_threshold,correlation_threshold,manual :::: ${PLATES}
+
+# Follow only the first part of this step 
+# https://cytomining.github.io/profiling-handbook/create-profiles.html#convert-to-other-formats
+
+parallel \
+  --no-run-if-empty \
+  --eta \
+  --joblog ../../log/${BATCH_ID}/csv2gct_backend.log \
+  --results ../../log/${BATCH_ID}/csv2gct_backend \
+  --files \
+  --keep-order \
+  ./csv2gct.R \
+  ../../backend/${BATCH_ID}/{1}/{1}_{2}.csv \
+  -o ../../backend/${BATCH_ID}/{1}/{1}_{2}.gct :::: ${PLATES} ::: augmented normalized normalized_variable_selected
+  
+
