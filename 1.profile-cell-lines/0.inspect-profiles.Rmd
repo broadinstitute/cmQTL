@@ -299,7 +299,7 @@ similarity %<>%
   
 ```
 
-### Measure absolute difference between profiles
+### Measure absolute difference of cell counts between profiles
 
 ```{r}
 # get data matrix
@@ -345,6 +345,52 @@ count_similarity %<>%
   arrange(desc(cell_count_abs_diff))
 ```
 
+### Measure average of cell counts of pairs of profiles
+
+```{r}
+# get data matrix
+data_matrix <-
+  cell_count %>%
+  select(-matches("Metadata"))
+
+# get metadata
+metadata <-
+  cell_count %>%
+  select(matches("Metadata")) %>%
+  rowid_to_column(var = "id")
+
+# measure similarities between treatments
+count_sum <- abs(outer(data_matrix$Count_Cells, data_matrix$Count_Cells,FUN = "+"))
+
+colnames(count_sum) <- seq(1, ncol(count_sum))
+
+count_sum %<>% 
+  as_tibble() %>% 
+  rowid_to_column(var = "id1") %>% 
+  gather(id2, cell_count_sum, -id1) %>% 
+  mutate(id2 = as.integer(id2)) %>%
+  filter(id1 > id2) %>% 
+  arrange(desc(cell_count_sum))
+
+# annotate the similarities data frame
+count_sum %<>%
+  inner_join(metadata %>% 
+               select(id, 
+                      Metadata_line_ID,
+                      Metadata_plating_density), 
+             by = c("id1" = "id")) %>% 
+  rename(Metadata_line_ID1 = Metadata_line_ID, 
+         Metadata_plating_density1 = Metadata_plating_density)  %>%
+  inner_join(metadata %>% 
+               select(id, 
+                      Metadata_line_ID,
+                      Metadata_plating_density), 
+             by = c("id2" = "id")) %>%
+  rename(Metadata_line_ID2 = Metadata_line_ID, 
+         Metadata_plating_density2 = Metadata_plating_density) %>% 
+  arrange(desc(cell_count_sum))
+```
+
 ### Combine 
 
 ```{r}
@@ -355,14 +401,21 @@ similarity %<>%
                     "Metadata_line_ID1", 
                     "Metadata_plating_density1", 
                     "Metadata_line_ID2", 
-                    "Metadata_plating_density2"))
+                    "Metadata_plating_density2")) %>%
+inner_join(count_sum,
+             by = c("id1", 
+                    "id2", 
+                    "Metadata_line_ID1", 
+                    "Metadata_plating_density1", 
+                    "Metadata_line_ID2", 
+                    "Metadata_plating_density2"))  
 ```
 
 ### Report relationship between profiles similarity and cell count similarity
 
 ```{r} 
 p <- 
-  ggplot(similarity, aes(correlation, cell_count_abs_diff)) + 
+  ggplot(similarity, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) + 
   geom_point() +
   xlab("Pearson correlation between profiles") +
   ylab("Abs. difference between cell counts") +
