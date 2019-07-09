@@ -26,6 +26,8 @@
 ############################
 # Step 1.1: Setup a virtual machine on AWS
 #
+# NOTE: We needed at 64Gb instance (r5.2xlarge) for this to complete successfully
+#
 # Follow the setup instructions in `generate-pilot-profiles.sh`
 # This pipeline will be run in the same VM
 
@@ -47,6 +49,20 @@ PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_
 # Except it will select only certain cells (either in colony or isolated)
 
 # Step 2.1 - Aggregate per well profiles for each single cell category
+
+cd ~/efs/${PROJECT_NAME}/workspace/software/cytominer_scripts
+
+mkdir -p ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}
+
+parallel \
+  --no-run-if-empty \
+  --eta \
+  aws s3 sync  \
+  s3://imaging-platform/projects/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/ \
+  ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/ \
+  :::: ${PLATES}
+
+    
 SC_TYPES=( "colony" "isolated" )
 for sc_type in "${SC_TYPES[@]}"
 do
@@ -58,7 +74,7 @@ do
     --files \
     --keep-order \
     ./aggregate.R \
-    --sqlite_file /home/ubuntu/bucket/projects/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/{1}.sqlite \
+    --sqlite_file ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/{1}.sqlite \
     --output ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}.csv \
     --sc_type $sc_type :::: ${PLATES}
 done
