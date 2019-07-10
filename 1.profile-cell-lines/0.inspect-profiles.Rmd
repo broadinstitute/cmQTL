@@ -172,7 +172,7 @@ df <-
                  variables = c("Count_Cells"), 
                  strata = c("Metadata_line_ID", "Metadata_plating_density"),
                  operation = "median"),
-             by = c("Metadata_line_ID"))
+             by = c("Metadata_line_ID", "Metadata_plating_density"))
 
 p <- 
   ggplot(df,
