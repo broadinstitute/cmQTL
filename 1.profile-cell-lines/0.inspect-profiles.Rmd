@@ -18,7 +18,7 @@ library(tidyverse)
 
 ### Read profiles
 
-Load pilot data for testing (this will be swapped out for the real data)
+Load data
 
 ```{r message=FALSE}
 profiles <- read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected.csv", progress = FALSE)
@@ -87,7 +87,7 @@ p <-
                       as.character(profiles$Metadata_line_ID),
                       well = profiles$Metadata_Well,
                       plate = 384) +
-  ggtitle("cmqtlpl1.5-31-2019-mt (dummy)") +
+  ggtitle("cmqtlpl1.5-31-2019-mt") +
   theme_dark() +
   scale_fill_discrete()
 
@@ -428,6 +428,7 @@ p <-
 p
 
 ```
+
 ## Clustering analysis via Morpheus
 
 Load ../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.gct in https://software.broadinstitute.org/morpheus/ and cluster
