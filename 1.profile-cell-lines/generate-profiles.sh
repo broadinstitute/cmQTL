@@ -95,11 +95,6 @@ cp ../2018_06_05_cmQTL/1.profile-cell-lines/dcp_config_files/* ../cellpainting_s
 # https://cytomining.github.io/profiling-handbook/create-profiles.html#create-database-backend
 
 ############################
-# NOTE: The steps below have not yet been run
-############################
-
-
-############################
 # Step 3 - Annotate
 ############################
 # NOTE - The annotate step creates `augmented` profiles in the `backend` folder
@@ -209,6 +204,42 @@ parallel \
   --plate_id {1} \
   --filters variance_threshold,correlation_threshold,manual :::: ${PLATES}
 
+############################
+# Step 6 - Audit
+############################
+
+# Audit for replicate reproducibility
+# https://cytomining.github.io/profiling-handbook/create-profiles.html#audit
+
+PLATE_MAPS=../../scratch/${BATCH_ID}/plate_maps.txt
+
+csvcut -c Plate_Map_Name \
+  ../../metadata/${BATCH_ID}/barcode_platemap.csv | \
+  tail -n +2|sort|uniq > \
+  ${PLATE_MAPS}
+  
+mkdir -p ../../audit/${BATCH_ID}/
+
+parallel \
+  --no-run-if-empty \
+  --eta \
+  --joblog ../../log/${BATCH_ID}/audit.log \
+  --results ../../log/${BATCH_ID}/audit \
+  --files \
+  --keep-order \
+  ./audit.R \
+  -b ${BATCH_ID} \
+  -m {1} \
+  -f _normalized_variable_selected.csv \
+  -o ../../audit/${BATCH_ID}/{1}_audit.csv \
+  -l ../../audit/${BATCH_ID}/{1}_audit_detailed.csv \
+  -p Metadata_Plate_Map_Name,Metadata_line_ID,Metadata_plating_density :::: ${PLATE_MAPS}
+  
+
+############################
+# Step 6 - Convert to other formats
+############################
+
 # Follow only the first part of this step 
 # https://cytomining.github.io/profiling-handbook/create-profiles.html#convert-to-other-formats
 # i.e.:
@@ -224,4 +255,15 @@ parallel \
   ../../backend/${BATCH_ID}/{1}/{1}_{2}.csv \
   -o ../../backend/${BATCH_ID}/{1}/{1}_{2}.gct :::: ${PLATES} ::: augmented normalized normalized_variable_selected
   
+############################
+# Step 7 - Upload data
+############################
+
+# Follow this step nearly verbatim 
+# https://cytomining.github.io/profiling-handbook/create-profiles.html#upload-data
+
+parallel \
+  aws s3 sync \
+  ../../{1}/${BATCH_ID}/ \
+  s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/{1}/${BATCH_ID}/ ::: audit backend batchfiles  load_data_csv log metadata parameters scratch
 
