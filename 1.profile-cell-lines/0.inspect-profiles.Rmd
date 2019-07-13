@@ -10,6 +10,7 @@ output: github_document
 
 ```{r message=FALSE}
 library(ggplot2)
+library(glue)
 library(magrittr)
 library(tidyverse)
 ```
@@ -20,9 +21,24 @@ library(tidyverse)
 
 
 ```{r message=FALSE}
-profiles <- read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected.csv", progress = FALSE)
+profiles <- 
+  read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected.csv", 
+           progress = FALSE)
+
+profiles_isolated <- 
+  read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_isolated_normalized_variable_selected.csv", 
+           progress = FALSE)
+
+profiles_colony <- 
+  read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_colony_normalized_variable_selected.csv", 
+           progress = FALSE)
 
 variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
+
+variables_isolated <- str_subset(names(profiles_isolated), "^Cells|^Nuclei|^Cytoplasm")
+
+variables_colony <- str_subset(names(profiles_colony), "^Cells|^Nuclei|^Cytoplasm")
+
 ```
 
 ```{r}
@@ -50,30 +66,98 @@ metadata %>%
   tally()
 ```
 
+### Report replicates
+
 ```{r}
-profiles %>%
+replicates_per_line <- 
+  profiles %>%
   group_by(Metadata_Plate, Metadata_line_ID) %>%
   tally()
+
+replicates_per_line
+```
+
+Verify that the number of replicates are same for colony and isolated profiles
+
+```{r}
+compare::compare(
+  profiles_isolated %>%
+    group_by(Metadata_Plate, Metadata_line_ID) %>%
+    tally(),
+  replicates_per_line,
+  allowAll = TRUE
+)
+
+compare::compare(
+  profiles_colony %>%
+    group_by(Metadata_Plate, Metadata_line_ID) %>%
+    tally(),
+  replicates_per_line,
+  allowAll = TRUE
+)
+
 ```
 
 ### Audits
 
-What is the median replicate correlation for each cell line?
+What is the median replicate correlation for each cell line? Do this across all types of profiles
 
 ```{r}
-audit <- read_csv("../../../audit/2019_06_10_Batch3/cmQTL_plate1_5.31.2019_audit.csv")
 
-audit_detailed <- read_csv("../../../audit/2019_06_10_Batch3/cmQTL_plate1_5.31.2019_audit_detailed.csv")
+audit_detailed_all <- tibble()
 
-p <- 
-  ggplot(audit_detailed,
-       aes(correlation)) + geom_histogram(binwidth = .05) +
-  geom_vline(xintercept = audit$null_threshold, color = "red") +
+audit_all <- tibble()
+
+for (profile_type_i in c("_colony", "_isolated", "")) {
+  audit <- read_csv(
+    glue(
+      "../../../audit/2019_06_10_Batch3/cmQTL_plate1_5.31.2019_audit{profile_type_i}.csv",
+      profile_type_i = profile_type_i
+    ),
+    col_types = cols(
+      plate_map_name = col_character(),
+      null_threshold = col_double(),
+      fraction_strong = col_double()
+    )
+  )
+  
+  audit_detailed <- read_csv(
+    glue(
+      "../../../audit/2019_06_10_Batch3/cmQTL_plate1_5.31.2019_audit{profile_type_i}_detailed.csv",
+      profile_type_i = profile_type_i
+    ),
+    col_types = cols(
+      Metadata_Plate_Map_Name = col_character(),
+      Metadata_line_ID = col_double(),
+      Metadata_plating_density = col_double(),
+      correlation = col_double()
+    )
+  )
+  
+  audit_detailed_all <- 
+    bind_rows(audit_detailed_all,
+              audit_detailed  %>% mutate(profile_type = profile_type_i))
+  audit_all <- 
+    bind_rows(audit_all,
+              audit %>% mutate(profile_type = profile_type_i))
+  
+}
+
+p <-
+  ggplot(audit_detailed_all,
+         aes(correlation)) +
+  geom_histogram(binwidth = .05) +
+  geom_vline(aes(xintercept = null_threshold), audit_all) +
   xlab("Median pearson correlation between replicates") +
-  ggtitle("Distribution of replicate correlation across all cell lines (cmqtlpl1.5-31-2019-mt)")
+  facet_wrap(~profile_type, ncol = 1) +
+  ggtitle(
+    "Distribution of replicate correlation across all cell lines",
+    subtitle = "Vertical line indicates 95th percentile of null distribution."
+  )
 
-p
-
+print(p)
+  
+  
 ```
 
 ## Is cell plating density correlated with the order of plating a cell line?
@@ -151,57 +235,99 @@ p
   
 ```
 
+## Is median replicate correlation correlated with other factors?
+
+
 ```{r}
-p <- 
-  ggplot(audit_detailed,
-       aes(as.factor(Metadata_line_ID), correlation)) + 
-  geom_col() +
-  xlab("cell line") + 
-  ylab("Median pearson correlation between replicates") +
-  ggtitle("Relationship between cell line id and replicate correlation (cmqtlpl1.5-31-2019-mt)",
-          subtitle = sprintf("Pearson correlation = %.2f",
-                             with(audit_detailed, cor(Metadata_line_ID, correlation))
-                             )
-          )
-p
-
-df <- 
-  audit_detailed %>% 
-  inner_join(cell_count %>%
-               cytominer::aggregate(
-                 variables = c("Count_Cells"), 
-                 strata = c("Metadata_line_ID", "Metadata_plating_density"),
-                 operation = "median"),
-             by = c("Metadata_line_ID", "Metadata_plating_density"))
-
-p <- 
-  ggplot(df,
-       aes(Count_Cells, correlation)) + 
-  geom_point() +
-  xlab("Cell count") + 
-  ylab("Median pearson correlation between replicates") +
-  ggtitle("Relationship between cell count and replicate correlation (cmqtlpl1.5-31-2019-mt)",
-          subtitle = sprintf("Pearson correlation = %.2f",
-                             with(df, cor(Count_Cells, correlation))
-                             )
-          )
-
-p
+df <-
+  audit_detailed_all %>%
+  inner_join(
+    cell_count %>%
+      cytominer::aggregate(
+        variables = c("Count_Cells"),
+        strata = c("Metadata_line_ID", "Metadata_plating_density"),
+        operation = "median"
+      ),
+    by = c("Metadata_line_ID", "Metadata_plating_density")
+  )
 ```
+
+### Is median replicate correlation correlated with cell id?
+
+```{r}
+p <-
+  ggplot(audit_detailed_all,
+         aes(as.factor(Metadata_line_ID), correlation)) +
+  geom_col() +
+  xlab("cell line") +
+  ylab("Median pearson correlation between replicates") +
+  facet_wrap(~profile_type, ncol = 1) +
+  ggtitle("Relationship between cell line id and replicate correlation (cmqtlpl1.5-31-2019-mt)")
+
+p
+
+audit_detailed_all %>%
+  group_by(profile_type) %>%
+  summarize(corval = cor(correlation, Metadata_line_ID)) 
+```
+
+
+### Is median replicate correlation correlated with cell plating density?
+
+```{r}
+p <-
+  ggplot(df,
+         aes(Count_Cells, correlation)) +
+  geom_point() +
+  xlab("Cell count") +
+  ylab("Median pearson correlation between replicates") +
+  facet_wrap(~profile_type, ncol = 1) +
+  ggtitle("Relationship between cell count and replicate correlation (cmqtlpl1.5-31-2019-mt)")
+
+p
+
+df %>%
+  group_by(profile_type) %>%
+  summarize(corval = cor(Count_Cells, correlation))
+```
+
 ### Attach cell count and replicate correlation to profiles and save gct
+
 
 ```{r}
 
 augmented_profiles <-
   profiles %>% 
-  inner_join(df,
+  inner_join(df %>% filter(profile_type == ""),
+             c("Metadata_Plate_Map_Name", "Metadata_plating_density", "Metadata_line_ID")) %>%
+  rename(Metadata_correlation = correlation,
+         Metadata_Count_Cells = Count_Cells) %>%
+  select(matches("^Metadata_"), everything())
+
+augmented_profiles_isolated <-
+  profiles %>% 
+  inner_join(df %>% filter(profile_type == "_isolated"),
+             c("Metadata_Plate_Map_Name", "Metadata_plating_density", "Metadata_line_ID")) %>%
+  rename(Metadata_correlation = correlation,
+         Metadata_Count_Cells = Count_Cells) %>%
+  select(matches("^Metadata_"), everything())
+
+augmented_profiles_colony <-
+  profiles %>% 
+  inner_join(df %>% filter(profile_type == "_colony"),
              c("Metadata_Plate_Map_Name", "Metadata_plating_density", "Metadata_line_ID")) %>%
   rename(Metadata_correlation = correlation,
          Metadata_Count_Cells = Count_Cells) %>%
   select(matches("^Metadata_"), everything())
 
 augmented_profiles %>%
-  write_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.csv")
+ write_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.csv")
+
+augmented_profiles_isolated %>%
+ write_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_isolated_normalized_variable_selected_augmented.csv")
+
+augmented_profiles_colony %>%
+ write_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_colony_normalized_variable_selected_augmented.csv")
 
 ```
 
@@ -213,18 +339,60 @@ Rscript csv2gct.R \
   ../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.csv \
   -o ../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.gct
 
+Rscript csv2gct.R \
+  ../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_isolated_normalized_variable_selected_augmented.csv \
+  -o ../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_isolated_normalized_variable_selected_augmented.gct
+
+Rscript csv2gct.R \
+  ../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_colony_normalized_variable_selected_augmented.csv \
+  -o ../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_colony_normalized_variable_selected_augmented.gct
+
 cd -
 ```
 
-### Plate median replicate correlation on a plate map
+### Plot median replicate correlation on a plate map
 
 ```{r}
-p <- 
-  platetools::raw_map(data = augmented_profiles$Metadata_correlation,
-                      well = augmented_profiles$Metadata_Well,
-                      plate = 384) +
+
+p <-
+  platetools::raw_map(
+    data = augmented_profiles$Metadata_correlation,
+    well = augmented_profiles$Metadata_Well,
+    plate = 384
+  ) +
+  ggtitle(
+      "cmqtlpl1.5-31-2019-mt Median replicate correlation ()"
+  ) +
+  theme_dark() +
+  scale_fill_continuous()
+
+print(p)
   
-  ggtitle("cmqtlpl1.5-31-2019-mt Median replicate correlation") +
+
+p <-
+  platetools::raw_map(
+    data = augmented_profiles_colony$Metadata_correlation,
+    well = augmented_profiles_colony$Metadata_Well,
+    plate = 384
+  ) +
+  ggtitle(
+      "cmqtlpl1.5-31-2019-mt Median replicate correlation (_colony)"
+  ) +
+  theme_dark() +
+  scale_fill_continuous()
+
+print(p)
+
+
+p <-
+  platetools::raw_map(
+    data = augmented_profiles_isolated$Metadata_correlation,
+    well = augmented_profiles_isolated$Metadata_Well,
+    plate = 384
+  ) +
+  ggtitle(
+      "cmqtlpl1.5-31-2019-mt Median replicate correlation (_isolated)"
+  ) +
   theme_dark() +
   scale_fill_continuous()
 
@@ -244,6 +412,21 @@ profiles %<>%
                        strata = c("Metadata_line_ID", "Metadata_plating_density"),
                        operation = "median")
 
+variables_colony <- str_subset(names(profiles_colony), "^Cells|^Nuclei|^Cytoplasm")
+
+profiles_colony %<>%
+  cytominer::aggregate(variables = variables_colony, 
+                       strata = c("Metadata_line_ID", "Metadata_plating_density"),
+                       operation = "median")
+
+variables_isolated <- str_subset(names(profiles_isolated), "^Cells|^Nuclei|^Cytoplasm")
+
+profiles_isolated %<>%
+  cytominer::aggregate(variables = variables_isolated, 
+                       strata = c("Metadata_line_ID", "Metadata_plating_density"),
+                       operation = "median")
+
+
 cell_count %<>%
   cytominer::aggregate(variables = c("Count_Cells"), 
                        strata = c("Metadata_line_ID", "Metadata_plating_density"),
@@ -254,51 +437,60 @@ cell_count %<>%
 ### Measure similarity between profiles
 
 ```{r}
-# get data matrix
-data_matrix <-
-  profiles %>%
-  select(-matches("Metadata"))
-
-# get metadata
-metadata <-
-  profiles %>%
-  select(matches("Metadata")) %>%
-  rowid_to_column(var = "id")
-
-# measure similarities between treatments
-similarity <- cor(t(data_matrix)) 
-
-colnames(similarity) <- seq(1, ncol(similarity))
-
-similarity %<>% 
-  as_tibble() %>% 
-  rowid_to_column(var = "id1") %>% 
-  gather(id2, correlation, -id1) %>% 
-  mutate(id2 = as.integer(id2)) %>%
-  filter(id1 > id2) %>% 
-  arrange(desc(correlation))
-
-# annotate the similarities data frame
-similarity %<>%
-  inner_join(metadata %>% 
-               select(id, 
-                      Metadata_line_ID,
-                      Metadata_plating_density), 
-             by = c("id1" = "id")) %>% 
-  rename(Metadata_line_ID1 = Metadata_line_ID, 
-         Metadata_plating_density1 = Metadata_plating_density)  %>%
-  inner_join(metadata %>% 
-               select(id, 
-                      Metadata_line_ID,
-                      Metadata_plating_density), 
-             by = c("id2" = "id")) %>%
-  rename(Metadata_line_ID2 = Metadata_line_ID, 
-         Metadata_plating_density2 = Metadata_plating_density) %>% 
-  arrange(desc(correlation))
+measure_profile_similarity <- function(profiles) {
+  # get data matrix
+  data_matrix <-
+    profiles %>%
+    select(-matches("Metadata"))
   
+  # get metadata
+  metadata <-
+    profiles %>%
+    select(matches("Metadata")) %>%
+    rowid_to_column(var = "id")
+  
+  # measure similarities between treatments
+  similarity_i <- cor(t(data_matrix)) 
+  
+  colnames(similarity_i) <- seq(1, ncol(similarity_i))
+  
+  similarity_i %<>% 
+    as_tibble() %>% 
+    rowid_to_column(var = "id1") %>% 
+    gather(id2, correlation, -id1) %>% 
+    mutate(id2 = as.integer(id2)) %>%
+    filter(id1 > id2) %>% 
+    arrange(desc(correlation))
+  
+  # annotate the similarities data frame
+  similarity_i %<>%
+    inner_join(metadata %>% 
+                 select(id, 
+                        Metadata_line_ID,
+                        Metadata_plating_density), 
+               by = c("id1" = "id")) %>% 
+    rename(Metadata_line_ID1 = Metadata_line_ID, 
+           Metadata_plating_density1 = Metadata_plating_density)  %>%
+    inner_join(metadata %>% 
+                 select(id, 
+                        Metadata_line_ID,
+                        Metadata_plating_density), 
+               by = c("id2" = "id")) %>%
+    rename(Metadata_line_ID2 = Metadata_line_ID, 
+           Metadata_plating_density2 = Metadata_plating_density) %>% 
+    arrange(desc(correlation))
+}
+  
+
+similarity <- measure_profile_similarity(profiles)
+
+similarity_colony <- measure_profile_similarity(profiles_colony)
+
+similarity_isolated <- measure_profile_similarity(profiles_isolated)
+
 ```
 
-### Measure absolute difference of cell counts between profiles
+### Measure *absolute difference* of cell counts between profiles
 
 ```{r}
 # get data matrix
@@ -344,7 +536,7 @@ count_similarity %<>%
   arrange(desc(cell_count_abs_diff))
 ```
 
-### Measure average of cell counts of pairs of profiles
+### Measure *average* of cell counts of pairs of profiles
 
 ```{r}
 # get data matrix
@@ -393,39 +585,76 @@ count_sum %<>%
 ### Combine 
 
 ```{r}
-similarity %<>% 
-  inner_join(count_similarity,
-             by = c("id1", 
-                    "id2", 
-                    "Metadata_line_ID1", 
-                    "Metadata_plating_density1", 
-                    "Metadata_line_ID2", 
-                    "Metadata_plating_density2")) %>%
-inner_join(count_sum,
-             by = c("id1", 
-                    "id2", 
-                    "Metadata_line_ID1", 
-                    "Metadata_plating_density1", 
-                    "Metadata_line_ID2", 
-                    "Metadata_plating_density2"))  
+combine_similarities <- function(similarity_i) {
+  similarity_i %<>% 
+    inner_join(count_similarity,
+               by = c("id1", 
+                      "id2", 
+                      "Metadata_line_ID1", 
+                      "Metadata_plating_density1", 
+                      "Metadata_line_ID2", 
+                      "Metadata_plating_density2")) %>%
+  inner_join(count_sum,
+               by = c("id1", 
+                      "id2", 
+                      "Metadata_line_ID1", 
+                      "Metadata_plating_density1", 
+                      "Metadata_line_ID2", 
+                      "Metadata_plating_density2")) 
+} 
+
+similarity %<>% combine_similarities()
+
+similarity_colony %<>% combine_similarities()
+
+similarity_isolated %<>% combine_similarities()
+
 ```
 
 ### Report relationship between profiles similarity and cell count similarity
 
 ```{r} 
-p <- 
-  ggplot(similarity, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) + 
+p <-
+  ggplot(similarity, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) +
   geom_point() +
   xlab("Pearson correlation between profiles") +
   ylab("Abs. difference between cell counts") +
-  ggtitle("Relationship between profiles similarity and cell count similarity",
-          subtitle = sprintf("Pearson correlation = %.2f",
+  xlim(-1.1, 1.1) +
+  ggtitle("Relationship between profiles similarity and cell count similarity ()",
+          subtitle = sprintf("Pearson correlation = %.3f",
                              with(similarity, cor(correlation, cell_count_abs_diff))
                              )
           )
 
 p
 
+p <- 
+  ggplot(similarity_colony, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) + 
+  geom_point() +
+  xlab("Pearson correlation between profiles") +
+  ylab("Abs. difference between cell counts") +
+  xlim(-1.1, 1.1) +
+  ggtitle("Relationship between profiles similarity and cell count similarity (_colony)",
+          subtitle = sprintf("Pearson correlation = %.3f",
+                             with(similarity_colony, cor(correlation, cell_count_abs_diff))
+                             )
+          )
+
+p
+
+p <- 
+  ggplot(similarity_isolated, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) + 
+  geom_point() +
+  xlab("Pearson correlation between profiles") +
+  ylab("Abs. difference between cell counts") +
+  xlim(-1.1, 1.1) +
+  ggtitle("Relationship between profiles similarity and cell count similarity (_isolated)",
+          subtitle = sprintf("Pearson correlation = %.3f",
+                             with(similarity_isolated, cor(correlation, cell_count_abs_diff))
+                             )
+          )
+
+p
 ```
 
 ## Clustering analysis via Morpheus
