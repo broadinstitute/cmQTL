@@ -19,6 +19,8 @@ library(tidyverse)
 
 ### Read profiles
 
+Read the 3 sets of profiles - all cells, only isolated, and only colony. 
+See `generate-sc-profiles.sh` for details on how the latter two were generated.
 
 ```{r message=FALSE}
 profiles <- 
@@ -32,7 +34,12 @@ profiles_isolated <-
 profiles_colony <- 
   read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_colony_normalized_variable_selected.csv", 
            progress = FALSE)
+```
 
+
+Each set of profiles will have a different set of features because feature selection was applied separately to each
+
+```{r message=FALSE}
 variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
 
 variables_isolated <- str_subset(names(profiles_isolated), "^Cells|^Nuclei|^Cytoplasm")
@@ -41,11 +48,23 @@ variables_colony <- str_subset(names(profiles_colony), "^Cells|^Nuclei|^Cytoplas
 
 ```
 
+Report the size of feature spaces
+
+```{r}
+tribble(~profile_type, ~feature_space,
+        "all", length(variables),
+        "isolated", length(variables_isolated),
+        "colony", length(variables_colony)
+)
+```
+
 ```{r}
 profiles %>% select(matches("Metadata_")) %>% head()
 ```
 
 ### How many replicates?
+
+Report based on metadata
 
 ```{r}
 metadata <- read_tsv("../../../metadata/2019_06_10_Batch3/platemap/cmQTL_plate1_5.31.2019.txt")
@@ -66,7 +85,7 @@ metadata %>%
   tally()
 ```
 
-### Report replicates
+Report based on profiles (should be identical)
 
 ```{r}
 replicates_per_line <- 
@@ -157,7 +176,6 @@ p <-
 
 print(p)
   
-  
 ```
 
 ## Is cell plating density correlated with the order of plating a cell line?
@@ -216,6 +234,8 @@ print(p)
 
 ### Plot cell count vs cell id
 
+The cell line id corresponds to the order in which the cells were plated. 
+We suspected that a longer settling time (i.e. smaller value of cell line id) was resulting in higher cell count.
 
 ```{r}
 p <- 
@@ -268,17 +288,18 @@ p
 
 audit_detailed_all %>%
   group_by(profile_type) %>%
-  summarize(corval = cor(correlation, Metadata_line_ID)) 
+  summarize(`Pearson corr. between cell line id and replicate correlation` = cor(correlation, Metadata_line_ID)) 
 ```
 
 
-### Is median replicate correlation correlated with cell plating density?
+### Is median replicate correlation correlated with cell count?
 
 ```{r}
 p <-
   ggplot(df,
          aes(Count_Cells, correlation)) +
   geom_point() +
+  geom_smooth(method = "lm") +
   xlab("Cell count") +
   ylab("Median pearson correlation between replicates") +
   facet_wrap(~profile_type, ncol = 1) +
@@ -288,13 +309,15 @@ p
 
 df %>%
   group_by(profile_type) %>%
-  summarize(corval = cor(Count_Cells, correlation))
+  summarize(`Pearson corr. between cell count and replicate correlation` = cor(Count_Cells, correlation))
 ```
 
 ### Attach cell count and replicate correlation to profiles and save gct
 
 
 ```{r}
+# It becomes messier to use a single data frame for all profiles this point onwards, so repeat code chunks for each profile type
+# (perhaps storing them in a list would make it easier to loop, but skipping that for now)
 
 augmented_profiles <-
   profiles %>% 
@@ -480,7 +503,6 @@ measure_profile_similarity <- function(profiles) {
            Metadata_plating_density2 = Metadata_plating_density) %>% 
     arrange(desc(correlation))
 }
-  
 
 similarity <- measure_profile_similarity(profiles)
 
@@ -582,7 +604,11 @@ count_sum %<>%
   arrange(desc(cell_count_sum))
 ```
 
-### Combine 
+### Combine profiles similarity and cell count similarity into a single data frame
+
+Note that the cell counts here are that of all cells from the well, not that of each profile type
+(i.e. we don't computer cell counts for `isolated` and `colony`, we just use the cell counts for the whole well)
+We should revisit whether this is the right approach.
 
 ```{r}
 combine_similarities <- function(similarity_i) {
@@ -620,7 +646,7 @@ p <-
   xlab("Pearson correlation between profiles") +
   ylab("Abs. difference between cell counts") +
   xlim(-1.1, 1.1) +
-  ggtitle("Relationship between profiles similarity and cell count similarity ()",
+  ggtitle("Relationship between profiles similarity and cell count similarity (all)",
           subtitle = sprintf("Pearson correlation = %.3f",
                              with(similarity, cor(correlation, cell_count_abs_diff))
                              )
@@ -634,7 +660,7 @@ p <-
   xlab("Pearson correlation between profiles") +
   ylab("Abs. difference between cell counts") +
   xlim(-1.1, 1.1) +
-  ggtitle("Relationship between profiles similarity and cell count similarity (_colony)",
+  ggtitle("Relationship between profiles similarity and cell count similarity (colony)",
           subtitle = sprintf("Pearson correlation = %.3f",
                              with(similarity_colony, cor(correlation, cell_count_abs_diff))
                              )
@@ -648,7 +674,7 @@ p <-
   xlab("Pearson correlation between profiles") +
   ylab("Abs. difference between cell counts") +
   xlim(-1.1, 1.1) +
-  ggtitle("Relationship between profiles similarity and cell count similarity (_isolated)",
+  ggtitle("Relationship between profiles similarity and cell count similarity (isolated)",
           subtitle = sprintf("Pearson correlation = %.3f",
                              with(similarity_isolated, cor(correlation, cell_count_abs_diff))
                              )
