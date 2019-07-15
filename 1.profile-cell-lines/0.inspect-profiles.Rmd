@@ -23,28 +23,40 @@ Read the 3 sets of profiles - all cells, only isolated, and only colony.
 See `generate-sc-profiles.sh` for details on how the latter two were generated.
 
 ```{r message=FALSE}
+batch_id <- "2019_06_10_Batch3"
+
+platemap <- "cmQTL_plate1_5.31.2019"
+
+plate_id <- "cmqtlpl1.5-31-2019-mt"
+
+backend_dir <- file.path("..", "..", "..", "backend")
+
 profiles <- 
-  read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected.csv", 
+  read_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_normalized_variable_selected.csv")), 
            progress = FALSE)
 
 profiles_isolated <- 
-  read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_isolated_normalized_variable_selected.csv", 
+  read_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_isolated_normalized_variable_selected.csv")), 
            progress = FALSE)
 
 profiles_colony <- 
-  read_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_colony_normalized_variable_selected.csv", 
+  read_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_colony_normalized_variable_selected.csv")), 
            progress = FALSE)
+
 ```
 
 
 Each set of profiles will have a different set of features because feature selection was applied separately to each
 
 ```{r message=FALSE}
-variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
 
-variables_isolated <- str_subset(names(profiles_isolated), "^Cells|^Nuclei|^Cytoplasm")
+cp_column_match <- "^Cells|^Nuclei|^Cytoplasm"
 
-variables_colony <- str_subset(names(profiles_colony), "^Cells|^Nuclei|^Cytoplasm")
+variables <- str_subset(names(profiles), cp_column_match)
+
+variables_isolated <- str_subset(names(profiles_isolated), cp_column_match)
+
+variables_colony <- str_subset(names(profiles_colony), cp_column_match)
 
 ```
 
@@ -67,7 +79,9 @@ profiles %>% select(matches("Metadata_")) %>% head()
 Report based on metadata
 
 ```{r}
-metadata <- read_tsv("../../../metadata/2019_06_10_Batch3/platemap/cmQTL_plate1_5.31.2019.txt")
+metadata_dir <- file.path("..", "..", "..", "metadata")
+
+metadata <- read_tsv(file.path(metadata_dir, batch_id, "platemap", paste0(platemap, ".txt")))
 
 metadata %<>%
   rename(
@@ -121,41 +135,32 @@ compare::compare(
 
 What is the median replicate correlation for each cell line? Do this across all types of profiles
 
-```{r}
+```{r message=FALSE}
 
 audit_detailed_all <- tibble()
 
 audit_all <- tibble()
 
+audit_dir <- file.path("..", "..", "..", "audit")
+
 for (profile_type_i in c("_colony", "_isolated", "")) {
   audit <- read_csv(
     glue(
-      "../../../audit/2019_06_10_Batch3/cmQTL_plate1_5.31.2019_audit{profile_type_i}.csv",
+      file.path(audit_dir, batch_id, "{platemap}_audit{profile_type_i}.csv"),
       profile_type_i = profile_type_i
-    ),
-    col_types = cols(
-      plate_map_name = col_character(),
-      null_threshold = col_double(),
-      fraction_strong = col_double()
     )
   )
   
   audit_detailed <- read_csv(
     glue(
-      "../../../audit/2019_06_10_Batch3/cmQTL_plate1_5.31.2019_audit{profile_type_i}_detailed.csv",
+      file.path(audit_dir, batch_id, "{platemap}_audit{profile_type_i}_detailed.csv"),
       profile_type_i = profile_type_i
-    ),
-    col_types = cols(
-      Metadata_Plate_Map_Name = col_character(),
-      Metadata_line_ID = col_double(),
-      Metadata_plating_density = col_double(),
-      correlation = col_double()
     )
   )
   
   audit_detailed_all <- 
     bind_rows(audit_detailed_all,
-              audit_detailed  %>% mutate(profile_type = profile_type_i))
+              audit_detailed %>% mutate(profile_type = profile_type_i))
   audit_all <- 
     bind_rows(audit_all,
               audit %>% mutate(profile_type = profile_type_i))
@@ -165,7 +170,7 @@ for (profile_type_i in c("_colony", "_isolated", "")) {
 p <-
   ggplot(audit_detailed_all,
          aes(correlation)) +
-  geom_histogram(binwidth = .05) +
+  geom_histogram(binwidth = .03) +
   geom_vline(aes(xintercept = null_threshold), audit_all) +
   xlab("Median pearson correlation between replicates") +
   facet_wrap(~profile_type, ncol = 1) +
@@ -175,6 +180,10 @@ p <-
   )
 
 print(p)
+
+ggsave(file.path("figures", 
+                 glue("{plate_id}_replicate_correlation.png")), 
+       p, width = 8, height = 8)
   
 ```
 
@@ -188,13 +197,14 @@ p <-
                       as.character(profiles$Metadata_line_ID),
                       well = profiles$Metadata_Well,
                       plate = 384) +
-  ggtitle("cmqtlpl1.5-31-2019-mt") +
+  ggtitle(platemap) +
   theme_dark() +
   scale_fill_discrete()
 
 print(p)
 
-out_file <- file.path("figures", "cmqtlpl1.5-31-2019-mt_layout.png")
+out_file <- file.path("figures", paste0(platemap, ".png"))
+
 ggsave(out_file, p, height = 4, width = 6)
 ```
 
@@ -209,7 +219,7 @@ ggsave(out_file, p, height = 4, width = 6)
 # verify that `data/cmqtlpl1.5-31-2019-mt_count.csv` looks right and then delete `data/count.csv`
 
 cell_count <-
-  read_csv("data/cmqtlpl1.5-31-2019-mt_count.csv") %>%
+  read_csv(file.path("data", paste0(plate_id, "_count.csv"))) %>%
   group_by(Metadata_Plate, Metadata_Well) %>%
   summarize(Count_Cells = sum(Count_Cells))
 
@@ -225,7 +235,7 @@ p <-
                       well = cell_count$Metadata_Well,
                       plate = 384) +
   
-  ggtitle("cmqtlpl1.5-31-2019-mt cell counts") +
+  ggtitle(glue("{plate_id} cell counts")) +
   theme_dark() +
   scale_fill_continuous()
 
@@ -245,14 +255,17 @@ p <-
   geom_smooth(method = "lm") +
   xlab("cell line") + 
   ylab("cell count") +
-  ggtitle("Relationship between cell line id and cell count (cmqtlpl1.5-31-2019-mt)",
+  ggtitle(glue("Relationship between cell line id and cell count ({plate_id})"),
           subtitle = sprintf("Pearson correlation = %.2f",
                              with(cell_count, cor(Count_Cells, Metadata_line_ID))
                              )
           )
 
 p
-  
+
+ggsave(file.path("figures", 
+                 glue("{plate_id}_cell_counts_across_replicates.png")), 
+       p, width = 8, height = 5)
 ```
 
 ## Is median replicate correlation correlated with other factors?
@@ -277,11 +290,13 @@ df <-
 ```{r}
 p <-
   ggplot(audit_detailed_all,
-         aes(as.factor(Metadata_line_ID), correlation)) +
-  geom_col() +
+         aes(Metadata_line_ID, correlation)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_bw() +
   xlab("cell line") +
   ylab("Median pearson correlation between replicates") +
-  facet_wrap(~profile_type, ncol = 1) +
+  facet_wrap(~profile_type, nrow = 1) +
   ggtitle("Relationship between cell line id and replicate correlation (cmqtlpl1.5-31-2019-mt)")
 
 p
@@ -299,10 +314,11 @@ p <-
   ggplot(df,
          aes(Count_Cells, correlation)) +
   geom_point() +
+  theme_bw() +
   geom_smooth(method = "lm") +
   xlab("Cell count") +
   ylab("Median pearson correlation between replicates") +
-  facet_wrap(~profile_type, ncol = 1) +
+  facet_wrap(~profile_type, nrow = 1) +
   ggtitle("Relationship between cell count and replicate correlation (cmqtlpl1.5-31-2019-mt)")
 
 p
@@ -314,6 +330,7 @@ df %>%
 
 ### Attach cell count and replicate correlation to profiles and save gct
 
+TODO: Create a function to simplify
 
 ```{r}
 # It becomes messier to use a single data frame for all profiles this point onwards, so repeat code chunks for each profile type
@@ -344,13 +361,13 @@ augmented_profiles_colony <-
   select(matches("^Metadata_"), everything())
 
 augmented_profiles %>%
- write_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.csv")
+ write_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_normalized_variable_selected_augmented.csv")))
 
 augmented_profiles_isolated %>%
- write_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_isolated_normalized_variable_selected_augmented.csv")
+ write_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_isolated_normalized_variable_selected_augmented.csv")))
 
 augmented_profiles_colony %>%
- write_csv("../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_colony_normalized_variable_selected_augmented.csv")
+ write_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_colony_normalized_variable_selected_augmented.csv")))
 
 ```
 
@@ -375,46 +392,58 @@ cd -
 
 ### Plot median replicate correlation on a plate map
 
+TODO: Create a function to simplify
+
 ```{r}
+
+profile_type_i <- "all"
+
+augmented_profiles_i <- augmented_profiles
 
 p <-
   platetools::raw_map(
-    data = augmented_profiles$Metadata_correlation,
-    well = augmented_profiles$Metadata_Well,
+    data = augmented_profiles_i$Metadata_correlation,
+    well = augmented_profiles_i$Metadata_Well,
     plate = 384
   ) +
   ggtitle(
-      "cmqtlpl1.5-31-2019-mt Median replicate correlation ()"
+      glue("{plate_id} Median replicate correlation ({profile_type_i})")
   ) +
   theme_dark() +
   scale_fill_continuous()
 
 print(p)
   
+profile_type_i <- "colony"
+
+augmented_profiles_i <- augmented_profiles_colony
 
 p <-
   platetools::raw_map(
-    data = augmented_profiles_colony$Metadata_correlation,
-    well = augmented_profiles_colony$Metadata_Well,
+    data = augmented_profiles_i$Metadata_correlation,
+    well = augmented_profiles_i$Metadata_Well,
     plate = 384
   ) +
   ggtitle(
-      "cmqtlpl1.5-31-2019-mt Median replicate correlation (_colony)"
+      glue("{plate_id} Median replicate correlation ({profile_type_i})")
   ) +
   theme_dark() +
   scale_fill_continuous()
 
 print(p)
+  
+profile_type_i <- "isolated"
 
+augmented_profiles_i <- augmented_profiles_isolated
 
 p <-
   platetools::raw_map(
-    data = augmented_profiles_isolated$Metadata_correlation,
-    well = augmented_profiles_isolated$Metadata_Well,
+    data = augmented_profiles_i$Metadata_correlation,
+    well = augmented_profiles_i$Metadata_Well,
     plate = 384
   ) +
   ggtitle(
-      "cmqtlpl1.5-31-2019-mt Median replicate correlation (_isolated)"
+      glue("{plate_id} Median replicate correlation ({profile_type_i})")
   ) +
   theme_dark() +
   scale_fill_continuous()
@@ -427,22 +456,24 @@ print(p)
 
 ### Aggregate profiles and cell counts, grouping by cell line and plating density
 
+TODO: Create a function to simplify
+
 ```{r}
-variables <- str_subset(names(profiles), "^Cells|^Nuclei|^Cytoplasm")
+variables <- str_subset(names(profiles), cp_column_match)
 
 profiles %<>%
   cytominer::aggregate(variables = variables, 
                        strata = c("Metadata_line_ID", "Metadata_plating_density"),
                        operation = "median")
 
-variables_colony <- str_subset(names(profiles_colony), "^Cells|^Nuclei|^Cytoplasm")
+variables_colony <- str_subset(names(profiles_colony), cp_column_match)
 
 profiles_colony %<>%
   cytominer::aggregate(variables = variables_colony, 
                        strata = c("Metadata_line_ID", "Metadata_plating_density"),
                        operation = "median")
 
-variables_isolated <- str_subset(names(profiles_isolated), "^Cells|^Nuclei|^Cytoplasm")
+variables_isolated <- str_subset(names(profiles_isolated), cp_column_match)
 
 profiles_isolated %<>%
   cytominer::aggregate(variables = variables_isolated, 
@@ -527,7 +558,7 @@ metadata <-
   rowid_to_column(var = "id")
 
 # measure similarities between treatments
-count_similarity <- abs(outer(data_matrix$Count_Cells, data_matrix$Count_Cells,FUN = "-"))
+count_similarity <- abs(outer(data_matrix$Count_Cells, data_matrix$Count_Cells, FUN = "-"))
 
 colnames(count_similarity) <- seq(1, ncol(count_similarity))
 

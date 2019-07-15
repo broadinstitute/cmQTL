@@ -303,6 +303,3 @@ aws s3 sync \
 aws s3 sync --exclude "*.sqlite" \
   s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/audit/${BATCH_ID}/ \
   backend/${BATCH_ID}/
-
-
-
