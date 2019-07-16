@@ -288,11 +288,17 @@ df <-
 ### Is median replicate correlation correlated with cell id?
 
 ```{r}
+cor_df <- 
+  audit_detailed_all %>%
+  group_by(profile_type) %>%
+  summarize(corval = cor(correlation, Metadata_line_ID)) 
+
 p <-
   ggplot(audit_detailed_all,
          aes(Metadata_line_ID, correlation)) +
   geom_point() +
   geom_smooth(method = "lm") +
+  geom_label(aes(x = 40, y = 1, label = sprintf("r=%.2f", corval)), data = cor_df) +
   theme_bw() +
   xlab("cell line") +
   ylab("Median pearson correlation between replicates") +
@@ -301,19 +307,25 @@ p <-
 
 p
 
-audit_detailed_all %>%
-  group_by(profile_type) %>%
-  summarize(`Pearson corr. between cell line id and replicate correlation` = cor(correlation, Metadata_line_ID)) 
+ggsave(file.path("figures", 
+                 glue("{plate_id}_cell_lines_vs_replicate_correlation.png")), 
+       p, width = 8, height = 5)
 ```
 
 
 ### Is median replicate correlation correlated with cell count?
 
 ```{r}
+cor_df <- 
+  df %>%
+  group_by(profile_type) %>%
+  summarize(corval = cor(Count_Cells, correlation))
+
 p <-
   ggplot(df,
          aes(Count_Cells, correlation)) +
   geom_point() +
+  geom_label(aes(x = 0.85 * max(df$Count_Cells), y = 1, label = sprintf("r=%.2f", corval)), data = cor_df) +
   theme_bw() +
   geom_smooth(method = "lm") +
   xlab("Cell count") +
@@ -323,51 +335,37 @@ p <-
 
 p
 
-df %>%
-  group_by(profile_type) %>%
-  summarize(`Pearson corr. between cell count and replicate correlation` = cor(Count_Cells, correlation))
+ggsave(file.path("figures", 
+                 glue("{plate_id}_cell_count_vs_replicate_correlation.png")), 
+       p, width = 8, height = 5)
+
 ```
 
 ### Attach cell count and replicate correlation to profiles and save gct
 
-TODO: Create a function to simplify
-
 ```{r}
-# It becomes messier to use a single data frame for all profiles this point onwards, so repeat code chunks for each profile type
-# (perhaps storing them in a list would make it easier to loop, but skipping that for now)
+# It becomes messier to use a single data frame for all profiles this point onwards
 
-augmented_profiles <-
-  profiles %>% 
-  inner_join(df %>% filter(profile_type == ""),
-             c("Metadata_Plate_Map_Name", "Metadata_plating_density", "Metadata_line_ID")) %>%
-  rename(Metadata_correlation = correlation,
-         Metadata_Count_Cells = Count_Cells) %>%
-  select(matches("^Metadata_"), everything())
+create_augmented_profiles <- function(profiles, profile_type_i) {
+  augmented_profiles_i <-
+    profiles %>% 
+    inner_join(df %>% filter(profile_type == profile_type_i),
+               c("Metadata_Plate_Map_Name", "Metadata_plating_density", "Metadata_line_ID")) %>%
+    rename(Metadata_correlation = correlation,
+           Metadata_Count_Cells = Count_Cells) %>%
+    select(matches("^Metadata_"), everything())
+  
+  augmented_profiles_i %>%
+   write_csv(file.path(backend_dir, batch_id, plate_id, glue("{plate_id}{profile_type_i}_normalized_variable_selected_augmented.csv")))
+  
+  augmented_profiles_i
+}
 
-augmented_profiles_isolated <-
-  profiles %>% 
-  inner_join(df %>% filter(profile_type == "_isolated"),
-             c("Metadata_Plate_Map_Name", "Metadata_plating_density", "Metadata_line_ID")) %>%
-  rename(Metadata_correlation = correlation,
-         Metadata_Count_Cells = Count_Cells) %>%
-  select(matches("^Metadata_"), everything())
+augmented_profiles <- create_augmented_profiles(profiles, "")
 
-augmented_profiles_colony <-
-  profiles %>% 
-  inner_join(df %>% filter(profile_type == "_colony"),
-             c("Metadata_Plate_Map_Name", "Metadata_plating_density", "Metadata_line_ID")) %>%
-  rename(Metadata_correlation = correlation,
-         Metadata_Count_Cells = Count_Cells) %>%
-  select(matches("^Metadata_"), everything())
+augmented_profiles_isolated <- create_augmented_profiles(profiles_isolated, "_isolated")
 
-augmented_profiles %>%
- write_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_normalized_variable_selected_augmented.csv")))
-
-augmented_profiles_isolated %>%
- write_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_isolated_normalized_variable_selected_augmented.csv")))
-
-augmented_profiles_colony %>%
- write_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_colony_normalized_variable_selected_augmented.csv")))
+augmented_profiles_colony <- create_augmented_profiles(profiles_colony, "_colony")
 
 ```
 
@@ -392,63 +390,30 @@ cd -
 
 ### Plot median replicate correlation on a plate map
 
-TODO: Create a function to simplify
 
 ```{r}
+plot_replicate_correlations_platemap <- function(augmented_profiles_i, profile_type) {
 
-profile_type_i <- "all"
-
-augmented_profiles_i <- augmented_profiles
-
-p <-
-  platetools::raw_map(
-    data = augmented_profiles_i$Metadata_correlation,
-    well = augmented_profiles_i$Metadata_Well,
-    plate = 384
-  ) +
-  ggtitle(
-      glue("{plate_id} Median replicate correlation ({profile_type_i})")
-  ) +
-  theme_dark() +
-  scale_fill_continuous()
-
-print(p)
+  p <-
+    platetools::raw_map(
+      data = augmented_profiles_i$Metadata_correlation,
+      well = augmented_profiles_i$Metadata_Well,
+      plate = 384
+    ) +
+    ggtitle(
+        glue("{plate_id} Median replicate correlation ({profile_type})")
+    ) +
+    theme_dark() +
+    scale_fill_continuous()
   
-profile_type_i <- "colony"
+  print(p)
+}
 
-augmented_profiles_i <- augmented_profiles_colony
-
-p <-
-  platetools::raw_map(
-    data = augmented_profiles_i$Metadata_correlation,
-    well = augmented_profiles_i$Metadata_Well,
-    plate = 384
-  ) +
-  ggtitle(
-      glue("{plate_id} Median replicate correlation ({profile_type_i})")
-  ) +
-  theme_dark() +
-  scale_fill_continuous()
-
-print(p)
+plot_replicate_correlations_platemap(augmented_profiles, "all")
   
-profile_type_i <- "isolated"
-
-augmented_profiles_i <- augmented_profiles_isolated
-
-p <-
-  platetools::raw_map(
-    data = augmented_profiles_i$Metadata_correlation,
-    well = augmented_profiles_i$Metadata_Well,
-    plate = 384
-  ) +
-  ggtitle(
-      glue("{plate_id} Median replicate correlation ({profile_type_i})")
-  ) +
-  theme_dark() +
-  scale_fill_continuous()
-
-print(p)
+plot_replicate_correlations_platemap(augmented_profiles_colony, "colony")
+  
+plot_replicate_correlations_platemap(augmented_profiles_isolated, "isolated")
 ```
 
 
@@ -456,30 +421,21 @@ print(p)
 
 ### Aggregate profiles and cell counts, grouping by cell line and plating density
 
-TODO: Create a function to simplify
-
 ```{r}
-variables <- str_subset(names(profiles), cp_column_match)
+aggregate_profiles <- function(profiles) {
+  variables <- str_subset(names(profiles), cp_column_match)
+  
+  profiles %<>%
+    cytominer::aggregate(variables = variables, 
+                         strata = c("Metadata_line_ID", "Metadata_plating_density"),
+                         operation = "median")
+}
 
-profiles %<>%
-  cytominer::aggregate(variables = variables, 
-                       strata = c("Metadata_line_ID", "Metadata_plating_density"),
-                       operation = "median")
+profiles %<>% aggregate_profiles()
 
-variables_colony <- str_subset(names(profiles_colony), cp_column_match)
+profiles_colony %<>% aggregate_profiles()
 
-profiles_colony %<>%
-  cytominer::aggregate(variables = variables_colony, 
-                       strata = c("Metadata_line_ID", "Metadata_plating_density"),
-                       operation = "median")
-
-variables_isolated <- str_subset(names(profiles_isolated), cp_column_match)
-
-profiles_isolated %<>%
-  cytominer::aggregate(variables = variables_isolated, 
-                       strata = c("Metadata_line_ID", "Metadata_plating_density"),
-                       operation = "median")
-
+profiles_isolated %<>% aggregate_profiles()
 
 cell_count %<>%
   cytominer::aggregate(variables = c("Count_Cells"), 
@@ -535,7 +491,7 @@ measure_profile_similarity <- function(profiles) {
     arrange(desc(correlation))
 }
 
-similarity <- measure_profile_similarity(profiles)
+similarity_all <- measure_profile_similarity(profiles)
 
 similarity_colony <- measure_profile_similarity(profiles_colony)
 
@@ -660,7 +616,7 @@ combine_similarities <- function(similarity_i) {
                       "Metadata_plating_density2")) 
 } 
 
-similarity %<>% combine_similarities()
+similarity_all %<>% combine_similarities()
 
 similarity_colony %<>% combine_similarities()
 
@@ -671,56 +627,40 @@ similarity_isolated %<>% combine_similarities()
 ### Report relationship between profiles similarity and cell count similarity
 
 ```{r} 
-p <-
-  ggplot(similarity, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) +
-  geom_point() +
-  xlab("Pearson correlation between profiles") +
-  ylab("Abs. difference between cell counts") +
-  xlim(-1.1, 1.1) +
-  ggtitle("Relationship between profiles similarity and cell count similarity (all)",
-          subtitle = sprintf("Pearson correlation = %.3f",
-                             with(similarity, cor(correlation, cell_count_abs_diff))
-                             )
-          )
 
-p
+plot_and_save_similarities <- function(similarity, profile_type) {
+  p <-
+    ggplot(similarity, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) +
+    geom_point() +
+    xlab("Pearson correlation between profiles") +
+    ylab("Abs. difference between cell counts") +
+    xlim(-1.1, 1.1) +
+    ggtitle(glue("Relationship between profiles similarity and cell count similarity ({profile_type})"),
+            subtitle = sprintf("Pearson correlation = %.3f",
+                               with(similarity, cor(correlation, cell_count_abs_diff))
+                               )
+            )
+  
+  print(p)
+  
+  ggsave(file.path("figures", 
+                   glue("{plate_id}_profiles_similarity_vs_cell_count_similarity_{profile_type}.png")), 
+         p, width = 7, height = 5)
+  
+  similarity %>% write_csv(file.path("data", glue("similarity_{profile_type}.csv")))
+}
 
-p <- 
-  ggplot(similarity_colony, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) + 
-  geom_point() +
-  xlab("Pearson correlation between profiles") +
-  ylab("Abs. difference between cell counts") +
-  xlim(-1.1, 1.1) +
-  ggtitle("Relationship between profiles similarity and cell count similarity (colony)",
-          subtitle = sprintf("Pearson correlation = %.3f",
-                             with(similarity_colony, cor(correlation, cell_count_abs_diff))
-                             )
-          )
+plot_and_save_similarities(similarity = similarity_all, profile_type = "all")
 
-p
+plot_and_save_similarities(similarity = similarity_colony, profile_type = "colony")
 
-p <- 
-  ggplot(similarity_isolated, aes(correlation, cell_count_abs_diff, color = cell_count_sum)) + 
-  geom_point() +
-  xlab("Pearson correlation between profiles") +
-  ylab("Abs. difference between cell counts") +
-  xlim(-1.1, 1.1) +
-  ggtitle("Relationship between profiles similarity and cell count similarity (isolated)",
-          subtitle = sprintf("Pearson correlation = %.3f",
-                             with(similarity_isolated, cor(correlation, cell_count_abs_diff))
-                             )
-          )
+plot_and_save_similarities(similarity = similarity_isolated, profile_type = "isolated")
 
-p
 ```
 
 ## Clustering analysis via Morpheus
 
 Load ../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt_normalized_variable_selected_augmented.gct in https://software.broadinstitute.org/morpheus/ and cluster
-
-```{r}
-
-```
 
 ![](figures/morpheus/cmqtlpl1.5-31-2019-mt-tight-clusters.png)
 
