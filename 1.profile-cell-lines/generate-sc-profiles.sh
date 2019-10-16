@@ -73,6 +73,7 @@ do
     --results ../../log/${BATCH_ID}/aggregate_${sc_type}_test \
     --files \
     --keep-order \
+    --max-procs 1 \
     ./aggregate.R \
     --sqlite_file ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/{1}.sqlite \
     --output ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}.csv \
