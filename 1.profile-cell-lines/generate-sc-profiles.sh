@@ -79,6 +79,15 @@ do
     --sc_type $sc_type :::: ${PLATES}
 done
 
+# check rows
+for sc_type in "${SC_TYPES[@]}"
+do
+  parallel \
+    --no-run-if-empty \
+    --keep-order \
+    wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}.csv :::: ${PLATES}
+done  
+
 ############################
 # Step 2.2 - Annotate the single cell types
 ############################
@@ -97,6 +106,15 @@ do
     --plate_id {1}_${sc_type} :::: ${PLATES}
 done
 
+# check rows
+for sc_type in "${SC_TYPES[@]}"
+do
+  parallel \
+    --no-run-if-empty \
+    --keep-order \
+    wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}_augmented.csv :::: ${PLATES}
+done  
+
 ############################
 # Step 2.3 - Normalize single cell types
 ############################
@@ -114,6 +132,15 @@ do
     --batch_id ${BATCH_ID} \
     --plate_id {1}_${sc_type} \
     --subset \"Metadata_Well != \'\'\'dummy\'\'\'\" :::: ${PLATES}
+done
+
+# check rows
+for sc_type in "${SC_TYPES[@]}"
+do
+  parallel \
+    --no-run-if-empty \
+    --keep-order \
+    wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}_normalized.csv :::: ${PLATES}
 done
 
 ############################
