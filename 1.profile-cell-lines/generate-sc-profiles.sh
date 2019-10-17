@@ -323,6 +323,12 @@ parallel \
   ../../{1}/${BATCH_ID}/ \
   s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/{1}/${BATCH_ID}/ ::: audit backend log scratch
 
+############################
+# Step 8 - Download data
+############################
+
+# The scripts below download only audits; adapt as needed
+
 PROJECT_NAME=2018_06_05_cmQTL
 BATCH_ID=2019_06_10_Batch3
 BUCKET=imaging-platform
