@@ -243,10 +243,15 @@ do
 
 done
 
-parallel \
-  --no-run-if-empty \
-  --keep-order \
-  wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}_normalized_variable_selected.csv :::: ${PLATES}
+for sc_type in "${SC_TYPES[@]}"
+do
+
+  parallel \
+    --no-run-if-empty \
+    --keep-order \
+    wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}_normalized_variable_selected.csv :::: ${PLATES}
+
+done
 
 ############################
 # Step 6 - Audit
