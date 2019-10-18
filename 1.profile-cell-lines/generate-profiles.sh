@@ -31,12 +31,17 @@
 
 # Step 1.2: Define Variables
 PROJECT_NAME=2018_06_05_cmQTL
-BATCH_ID=2019_06_10_Batch3
+BATCH_ID=BATCH_ID=2019_06_10_Batch3
 BUCKET=imaging-platform
 MAXPROCS=3 # m4.xlarge has 4 cores; keep 1 free
 mkdir -p ~/efs/${PROJECT_NAME}/workspace/
 cd ~/efs/${PROJECT_NAME}/workspace/
 mkdir -p log/${BATCH_ID}
+
+# the scripts were run verbatim for these two additional batches with appropriate modifications to 
+# SAMPLE_PLATE_ID and contents of $PLATES
+#BATCH_ID=2019_08_15_Batch4 
+#BATCH_ID=2019_09_06_Batch5
 
 # Step 1.3 - Create an EBS temp directory for creating the backend
 mkdir ~/ebs_tmp
