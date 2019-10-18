@@ -41,6 +41,10 @@ cd ~/efs/${PROJECT_NAME}/workspace/
 mkdir -p log/${BATCH_ID}
 PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
 
+# the scripts were run verbatim for these two additional batches
+#BATCH_ID=2019_08_15_Batch4 
+#BATCH_ID=2019_09_06_Batch5
+
 ############################
 # Step 2 - Generate single cell profiles
 ############################
@@ -323,22 +327,4 @@ parallel \
   ../../{1}/${BATCH_ID}/ \
   s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/{1}/${BATCH_ID}/ ::: audit backend log scratch
 
-############################
-# Step 8 - Download data
-############################
 
-# The scripts below download only audits; adapt as needed
-
-PROJECT_NAME=2018_06_05_cmQTL
-BATCH_ID=2019_06_10_Batch3
-BUCKET=imaging-platform
-
-cd ~/work/projects/${PROJECT_NAME}/workspace
-
-aws s3 sync \
-  s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/audit/${BATCH_ID}/ \
-  audit/${BATCH_ID}/
-  
-aws s3 sync --exclude "*.sqlite" \
-  s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/audit/${BATCH_ID}/ \
-  backend/${BATCH_ID}/
