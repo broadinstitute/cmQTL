@@ -11,7 +11,7 @@ echo "batch_id,plate_id
 2019_08_15_Batch4,BR00106709
 2019_08_15_Batch4,BR00106708
 2019_09_06_Batch5,BR00107338
-2019_09_06_Batch5,BR00107339" > batch_plate.txt
+2019_09_06_Batch5,BR00107339" > /tmp/batch_plate.txt
 
 parallel \
     -a batch_plate.txt \
