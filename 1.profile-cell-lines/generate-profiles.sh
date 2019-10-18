@@ -212,13 +212,11 @@ parallel \
 # Compute cell counts
 ############################
 
-BATCH_ID=2019_06_10_Batch3
-# the scripts were run verbatim for these two additional batches with appropriate modifications to 
-# SAMPLE_PLATE_ID and contents of $PLATES
-#BATCH_ID=2019_08_15_Batch4 
-#BATCH_ID=2019_09_06_Batch5
-
-PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
+# If jumping in directly to this step, define BATCH_ID and PLATES
+# BATCH_ID=2019_06_10_Batch3
+# BATCH_ID=2019_08_15_Batch4 
+# BATCH_ID=2019_09_06_Batch5
+# PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
 
 cd ~/efs/${PROJECT_NAME}/workspace/software/cytominer_scripts
 
