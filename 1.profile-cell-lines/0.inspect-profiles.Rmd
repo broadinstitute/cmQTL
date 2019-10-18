@@ -212,16 +212,13 @@ ggsave(out_file, p, height = 4, width = 6)
 
 ```{r}
 
-# Generate cell counts directly from Image.csv files because the SQLite is too large to load
+# Copy cell counts to profiles/
 # 
-# find../../../analysis/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/analysis/ -name Image.csv -exec csvcut -c Metadata_Well,Count_Cells {} \; > data/count.csv
-# cat <(echo Metadata_Well,Count_Cells) <(grep -v "Metadata_Well,Count_Cells" count.csv|sort) > data/cmqtlpl1.5-31-2019-mt_count.csv
-# verify that `data/cmqtlpl1.5-31-2019-mt_count.csv` looks right and then delete `data/count.csv`
+# find ../../../../backend/ -name "*count*" -exec cp {} profiles/ \;
 
 cell_count <-
-  read_csv(file.path("data", paste0(plate_id, "_count.csv"))) %>%
-  group_by(Metadata_Plate, Metadata_Well) %>%
-  summarize(Count_Cells = sum(Count_Cells))
+  read_csv(file.path("profiles", paste0(plate_id, "_count.csv"))) %>%
+  select(Metadata_Plate, Metadata_Well, Count_Cells)
 
 cell_count %<>%
   inner_join(
