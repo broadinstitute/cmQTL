@@ -1,8 +1,6 @@
 # Profile Stem Cell Lines
 
-Our goal with this module is to generate profiles for all the 480 stem cell lines. 
-
-We will process data in batches and update this readme with notes as we go.
+Our goal with this module is to generate profiles for all the 277 stem cell lines. 
 
 There are 10 profiles files for each plate, stored in [profiles](https://github.com/broadinstitute/cmQTL/tree/master/1.profile-cell-lines/profiles), corresponding to different transformations of the data:
 
@@ -19,3 +17,13 @@ There are 10 profiles files for each plate, stored in [profiles](https://github.
 |isolated_normalized | (similar to normalized) |
 |isolated_normalized_variable_selected | (similar to normalized_variable_selected) |
 
+These are the counts of cell lines across the full dataset (n=277 in total)
+
+|Metadata_Plate        |  n|
+|:---------------------|--:|
+|BR00106708            | 48|
+|BR00106709            | 45|
+|BR00107338            | 40|
+|BR00107339            | 48|
+|cmqtlpl1.5-31-2019-mt | 48|
+|cmqtlpl261-2019-mt    | 48|
