@@ -41,6 +41,10 @@ cd ~/efs/${PROJECT_NAME}/workspace/
 mkdir -p log/${BATCH_ID}
 PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
 
+# the scripts were run verbatim for these two additional batches
+#BATCH_ID=2019_08_15_Batch4 
+#BATCH_ID=2019_09_06_Batch5
+
 ############################
 # Step 2 - Generate single cell profiles
 ############################
@@ -73,11 +77,21 @@ do
     --results ../../log/${BATCH_ID}/aggregate_${sc_type}_test \
     --files \
     --keep-order \
+    --max-procs 1 \
     ./aggregate.R \
     --sqlite_file ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/{1}.sqlite \
     --output ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}.csv \
     --sc_type $sc_type :::: ${PLATES}
 done
+
+# check rows
+for sc_type in "${SC_TYPES[@]}"
+do
+  parallel \
+    --no-run-if-empty \
+    --keep-order \
+    wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}.csv :::: ${PLATES}
+done  
 
 ############################
 # Step 2.2 - Annotate the single cell types
@@ -97,6 +111,15 @@ do
     --plate_id {1}_${sc_type} :::: ${PLATES}
 done
 
+# check rows
+for sc_type in "${SC_TYPES[@]}"
+do
+  parallel \
+    --no-run-if-empty \
+    --keep-order \
+    wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}_augmented.csv :::: ${PLATES}
+done  
+
 ############################
 # Step 2.3 - Normalize single cell types
 ############################
@@ -114,6 +137,15 @@ do
     --batch_id ${BATCH_ID} \
     --plate_id {1}_${sc_type} \
     --subset \"Metadata_Well != \'\'\'dummy\'\'\'\" :::: ${PLATES}
+done
+
+# check rows
+for sc_type in "${SC_TYPES[@]}"
+do
+  parallel \
+    --no-run-if-empty \
+    --keep-order \
+    wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}_normalized.csv :::: ${PLATES}
 done
 
 ############################
@@ -215,10 +247,15 @@ do
 
 done
 
-parallel \
-  --no-run-if-empty \
-  --keep-order \
-  wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}_normalized_variable_selected.csv :::: ${PLATES}
+for sc_type in "${SC_TYPES[@]}"
+do
+
+  parallel \
+    --no-run-if-empty \
+    --keep-order \
+    wc -l ../../backend/${BATCH_ID}/{1}/{1}_${sc_type}_normalized_variable_selected.csv :::: ${PLATES}
+
+done
 
 ############################
 # Step 6 - Audit
@@ -290,16 +327,4 @@ parallel \
   ../../{1}/${BATCH_ID}/ \
   s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/{1}/${BATCH_ID}/ ::: audit backend log scratch
 
-PROJECT_NAME=2018_06_05_cmQTL
-BATCH_ID=2019_06_10_Batch3
-BUCKET=imaging-platform
 
-cd ~/work/projects/${PROJECT_NAME}/workspace
-
-aws s3 sync \
-  s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/audit/${BATCH_ID}/ \
-  audit/${BATCH_ID}/
-  
-aws s3 sync --exclude "*.sqlite" \
-  s3://${BUCKET}/projects/${PROJECT_NAME}/workspace/audit/${BATCH_ID}/ \
-  backend/${BATCH_ID}/

@@ -3,8 +3,8 @@
   "AllocationStrategy": "lowestPrice",
   "TargetCapacity": 235,
   "SpotPrice": "0.20",
-  "ValidFrom": "2018-03-20T20:28:54Z",
-  "ValidUntil": "2019-07-20T20:28:54Z",
+  "ValidFrom": "2019-08-07T20:28:54Z",
+  "ValidUntil": "2020-08-07T20:28:54Z",
   "TerminateInstancesWithExpiration": true,
   "LaunchSpecifications": [
     {

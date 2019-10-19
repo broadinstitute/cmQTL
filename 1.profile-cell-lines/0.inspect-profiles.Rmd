@@ -15,6 +15,16 @@ library(magrittr)
 library(tidyverse)
 ```
 
+
+```{r}
+simple_aggregate <- function(population, variables, strata, operation="mean") {
+  population %>%
+    dplyr::group_by_at(.vars = strata) %>%
+    dplyr::summarise_at(.funs = operation, .vars = variables) %>%
+    dplyr::ungroup()
+}
+```
+
 ## Data overview
 
 ### Read profiles
@@ -29,18 +39,16 @@ platemap <- "cmQTL_plate1_5.31.2019"
 
 plate_id <- "cmqtlpl1.5-31-2019-mt"
 
-backend_dir <- file.path("..", "..", "..", "backend")
-
 profiles <- 
-  read_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_normalized_variable_selected.csv")), 
+  read_csv(file.path("profiles", paste0(plate_id, "_normalized_variable_selected.csv")), 
            progress = FALSE)
 
 profiles_isolated <- 
-  read_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_isolated_normalized_variable_selected.csv")), 
+  read_csv(file.path("profiles", paste0(plate_id, "_isolated_normalized_variable_selected.csv")), 
            progress = FALSE)
 
 profiles_colony <- 
-  read_csv(file.path(backend_dir, batch_id, plate_id, paste0(plate_id, "_colony_normalized_variable_selected.csv")), 
+  read_csv(file.path("profiles", paste0(plate_id, "_colony_normalized_variable_selected.csv")), 
            progress = FALSE)
 
 ```
@@ -212,16 +220,13 @@ ggsave(out_file, p, height = 4, width = 6)
 
 ```{r}
 
-# Generate cell counts directly from Image.csv files because the SQLite is too large to load
+# Copy cell counts to profiles/
 # 
-# find../../../analysis/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/analysis/ -name Image.csv -exec csvcut -c Metadata_Well,Count_Cells {} \; > data/count.csv
-# cat <(echo Metadata_Well,Count_Cells) <(grep -v "Metadata_Well,Count_Cells" count.csv|sort) > data/cmqtlpl1.5-31-2019-mt_count.csv
-# verify that `data/cmqtlpl1.5-31-2019-mt_count.csv` looks right and then delete `data/count.csv`
+# find ../../../../backend/ -name "*count*" -exec cp {} profiles/ \;
 
 cell_count <-
-  read_csv(file.path("data", paste0(plate_id, "_count.csv"))) %>%
-  group_by(Metadata_Plate, Metadata_Well) %>%
-  summarize(Count_Cells = sum(Count_Cells))
+  read_csv(file.path("profiles", paste0(plate_id, "_count.csv"))) %>%
+  select(Metadata_Plate, Metadata_Well, Count_Cells)
 
 cell_count %<>%
   inner_join(
@@ -276,7 +281,7 @@ df <-
   audit_detailed_all %>%
   inner_join(
     cell_count %>%
-      cytominer::aggregate(
+      simple_aggregate(
         variables = c("Count_Cells"),
         strata = c("Metadata_line_ID", "Metadata_plating_density"),
         operation = "median"
@@ -356,7 +361,7 @@ create_augmented_profiles <- function(profiles, profile_type_i) {
     select(matches("^Metadata_"), everything())
   
   augmented_profiles_i %>%
-   write_csv(file.path(backend_dir, batch_id, plate_id, glue("{plate_id}{profile_type_i}_normalized_variable_selected_augmented.csv")))
+   write_csv(file.path("profiles", glue("{plate_id}{profile_type_i}_normalized_variable_selected_augmented.csv")))
   
   augmented_profiles_i
 }
@@ -426,7 +431,7 @@ aggregate_profiles <- function(profiles) {
   variables <- str_subset(names(profiles), cp_column_match)
   
   profiles %<>%
-    cytominer::aggregate(variables = variables, 
+    simple_aggregate(variables = variables, 
                          strata = c("Metadata_line_ID", "Metadata_plating_density"),
                          operation = "median")
 }
@@ -438,7 +443,7 @@ profiles_colony %<>% aggregate_profiles()
 profiles_isolated %<>% aggregate_profiles()
 
 cell_count %<>%
-  cytominer::aggregate(variables = c("Count_Cells"), 
+  simple_aggregate(variables = c("Count_Cells"), 
                        strata = c("Metadata_line_ID", "Metadata_plating_density"),
                        operation = "median")
   
@@ -593,7 +598,7 @@ Load ../../../backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019
 
 ### Inspect the tight cluster
 
-```{r}
+```{r eval=FALSE}
 tight_cluster <- 
   CePa::read.gct("figures/morpheus/tight_cluster.gct") %>%
   as_data_frame() 

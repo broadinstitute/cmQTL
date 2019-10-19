@@ -37,7 +37,11 @@ MAXPROCS=3 # m4.xlarge has 4 cores; keep 1 free
 mkdir -p ~/efs/${PROJECT_NAME}/workspace/
 cd ~/efs/${PROJECT_NAME}/workspace/
 mkdir -p log/${BATCH_ID}
-PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
+
+# the scripts were run verbatim for these two additional batches with appropriate modifications to 
+# SAMPLE_PLATE_ID and contents of $PLATES
+#BATCH_ID=2019_08_15_Batch4 
+#BATCH_ID=2019_09_06_Batch5
 
 # Step 1.3 - Create an EBS temp directory for creating the backend
 mkdir ~/ebs_tmp
@@ -205,6 +209,58 @@ parallel \
   --filters variance_threshold,correlation_threshold,manual :::: ${PLATES}
 
 ############################
+# Compute cell counts
+############################
+
+# If jumping in directly to this step, define BATCH_ID and PLATES
+# BATCH_ID=2019_06_10_Batch3
+# BATCH_ID=2019_08_15_Batch4 
+# BATCH_ID=2019_09_06_Batch5
+# PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
+
+cd ~/efs/${PROJECT_NAME}/workspace/software/cytominer_scripts
+
+mkdir -p ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}
+
+parallel \
+  --no-run-if-empty \
+  --eta \
+  aws s3 sync \
+  --exclude '"*"' \
+  --include '"*.sqlite"' \
+  s3://imaging-platform/projects/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/ \
+  ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/ \
+  :::: ${PLATES}
+
+# cell counts
+parallel \
+  --no-run-if-empty \
+  --max-procs 1 \
+  --joblog ../../log/${BATCH_ID}/stats.log \
+  --results ../../log/${BATCH_ID}/stats \
+  --files \
+  --keep-order \
+  --eta \
+  ./stats.R  \
+  ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/{1}.sqlite \
+  -o ../../backend/${BATCH_ID}/{1}/{1}_count.csv \
+  :::: ${PLATES}
+
+# check rows
+parallel \
+  --no-run-if-empty \
+  --keep-order \
+  wc -l ../../backend/${BATCH_ID}/{1}/{1}_count.csv :::: \
+  ${PLATES}
+
+# remove sqlite
+parallel \
+  --no-run-if-empty \
+  --eta \
+  rm ~/ebs_tmp/2018_06_05_cmQTL/workspace/backend/${BATCH_ID}/{1}/{1}.sqlite \
+  :::: ${PLATES}
+
+############################
 # Step 6 - Audit
 ############################
 
@@ -235,7 +291,6 @@ parallel \
   -l ../../audit/${BATCH_ID}/{1}_audit_detailed.csv \
   -p Metadata_Plate_Map_Name,Metadata_line_ID,Metadata_plating_density :::: ${PLATE_MAPS}
   
-
 ############################
 # Step 6 - Convert to other formats
 ############################
