@@ -1,0 +1,75 @@
+---
+title: "Inspect profiles"
+subtitle: "cmQTL project"
+author: "Shantanu Singh"
+date: "October 2019"
+output: github_document
+---
+
+```{r}
+library(ggplot2)
+library(glue)
+library(magrittr)
+library(tidyverse)  
+```
+
+# Read profiles
+
+```{r}
+plates <- c("BR00106708", 
+            "BR00106709", 
+            "BR00107338", 
+            "BR00107339", 
+            "cmqtlpl1.5-31-2019-mt", 
+            "cmqtlpl261-2019-mt"
+)
+
+plate_id <- plates[[1]]
+
+profiles <- 
+  plates %>%
+  map_df(~read_csv(file.path("profiles", paste0(.x, "_normalized.csv")), 
+                   col_types = cols(
+                     .default = col_double(),
+                     Metadata_Plate = col_character(),
+                     Metadata_Well = col_character(),
+                     Metadata_Assay_Plate_Barcode = col_character(),
+                     Metadata_Plate_Map_Name = col_character(),
+                     Metadata_well_position = col_character()
+                   ),
+                   progress = FALSE))
+
+```
+
+`Metadata_line_ID` are empty wells or those that failed
+
+```{r}
+profiles %<>%
+  filter(Metadata_line_ID != 0)
+```
+
+# Inspect profiles
+
+Across how many plates is each cell line plated?
+
+```{r}
+profiles %>%
+  distinct(Metadata_Plate, Metadata_line_ID) %>%
+  group_by(Metadata_line_ID) %>%
+  tally(name = "n_plates") %>%
+  group_by(n_plates) %>%
+  tally(name = "n_lines")
+```
+List cell lines that are present on more than one plate
+
+```{r}
+profiles %>%
+  distinct(Metadata_Plate, Metadata_line_ID) %>%
+  group_by(Metadata_line_ID) %>%
+  tally(name = "n_plates") %>%
+  filter(n_plates == 2) %>%
+  inner_join(profiles %>% distinct(Metadata_Plate, Metadata_line_ID)) %>%
+  ungroup() %>%
+  arrange(Metadata_line_ID)
+```
+
