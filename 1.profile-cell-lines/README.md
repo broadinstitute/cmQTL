@@ -17,6 +17,19 @@ There are 10 profiles files for each plate, stored in [profiles](https://github.
 |isolated_normalized | (similar to normalized) |
 |isolated_normalized_variable_selected | (similar to normalized_variable_selected) |
 
+The single cell SQLite files are available on S3:
+
+|Metadata_Plate|
+|:-------------|
+| [cmqtlpl1.5-31-2019-mt](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_06_10_Batch3/cmqtlpl1.5-31-2019-mt/cmqtlpl1.5-31-2019-mt.sqlite) |
+| [cmqtlpl261-2019-mt](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_06_10_Batch3/cmqtlpl261-2019-mt/cmqtlpl261-2019-mt.sqlite) |
+| [BR00106708](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_08_15_Batch4/BR00106708/BR00106708.sqlite) |
+| [BR00106709](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_08_15_Batch4/BR00106709/BR00106709.sqlite) |
+| [BR00107338](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_09_06_Batch5/BR00107338/BR00107338.sqlite) |
+| [BR00107339](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_09_06_Batch5/BR00107339/BR00107339.sqlite) |
+
+
+
 These are the counts of cell lines across the full dataset (n=277 in total)
 
 |Metadata_Plate        |  n|
