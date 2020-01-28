@@ -29,7 +29,6 @@ The single cell SQLite files are available on S3:
 | [BR00107339](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_09_06_Batch5/BR00107339/BR00107339.sqlite) |
 
 
-
 These are the counts of cell lines across the full dataset (n=277 in total)
 
 |Metadata_Plate        |  n|
