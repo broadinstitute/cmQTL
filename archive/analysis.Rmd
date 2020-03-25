@@ -12,7 +12,7 @@ library(randomForest)
 
 
 ```{r message=FALSE}
-normalized <- read_csv("../../backend/PILOT_1/BR00098071/BR00098071_normalized.csv", progress = FALSE)
+normalized <- read_csv("../../../backend/PILOT_1/BR00098071/BR00098071_normalized.csv", progress = FALSE)
 
 variables <- str_subset(names(normalized), "^Cells|^Nuclei|^Cytoplasm")
 ```
