@@ -30,7 +30,6 @@ The single cell SQLite files are available on S3:
 | [cmQTLplate7-2-27-20](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2020_03_05_Batch6/cmQTLplate7-2-27-20/cmQTLplate7-2-27-20.sqlite) |
 
 
-
 These are the counts of cell lines across the full dataset (n=308 in total)
 
 |Metadata_Plate        |  n|
@@ -42,3 +41,8 @@ These are the counts of cell lines across the full dataset (n=308 in total)
 |BR00107338            | 40|
 |BR00107339            | 48|
 |cmQTLplate7-2-27-20   | 48|
+
+## Downloading sample images
+
+The notebook `⁨1.profile-cell-lines⁩/7.select_images_to_print.Rmd` shows how to download sample images.
+
