@@ -42,6 +42,7 @@ mkdir -p log/${BATCH_ID}
 # SAMPLE_PLATE_ID and contents of $PLATES
 #BATCH_ID=2019_08_15_Batch4 
 #BATCH_ID=2019_09_06_Batch5
+#BATCH_ID=2020_03_05_Batch6
 
 # Step 1.3 - Create an EBS temp directory for creating the backend
 mkdir ~/ebs_tmp
