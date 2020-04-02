@@ -116,19 +116,15 @@ images <-
   filter(Metadata_FieldID == fieldID) %>%
   select(matches("^Metadata"), matches("^URL"), matches("^FileName_Orig"))
 
-images %<>%
-  select(Metadata_Plate,  matches("^URL_")) %>%
-  gather(Metadata_Channel, URL, -Metadata_Plate) %>%
-  select(-Metadata_Channel)
+images_pivoted <-
+  images %>%
+  select(Metadata_Plate,  Metadata_Well, matches("^URL_")) %>%
+  gather(Metadata_Channel, URL, -Metadata_Plate, -Metadata_Well) %>%
+  mutate(filename = basename(URL)) %>%
+  select(Metadata_Plate, Metadata_Well, Metadata_Channel, filename, URL)
 
-images %<>%
-  mutate(filename = basename(URL))
-
-images %<>%
-  select(Metadata_Plate, filename, URL)
-
-images %>% 
-  write_csv("data/images_to_download.csv")
+images_pivoted %>% 
+  write_csv("data/sample_images.csv")
 
 ```
 
@@ -144,7 +140,7 @@ images %>%
 # parallel \
 #   --header ".*\n" \
 #   -C "," \
-#   -a data/images_to_download.csv \
+#   -a data/sample_images.csv \
 #   --eta \
 #   --joblog ${IMAGE_DIR}/download.log \
 #   --results ${IMAGE_DIR}/download \
@@ -156,6 +152,6 @@ images %>%
 ```{r}
 images %>%
   select(matches("^Metadata"),  matches("^FileName_Orig")) %>%
-  write_csv("data/gwas_images.csv")
+  write_csv("data/sample_images_metadata.csv")
 ```
 
