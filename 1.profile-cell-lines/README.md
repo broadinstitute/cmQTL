@@ -42,6 +42,19 @@ These are the counts of cell lines across the full dataset (n=308 in total)
 |BR00107339            | 48|
 |cmQTLplate7-2-27-20   | 48|
 
+These are the details of batches – when they were imaged and the plate IDs of the constituent plates (a.k.a. `Metadata_Plate`)
+
+| Date imaged | Batch ID | Metadata_Plate |
+|:------------|----------| :-------|
+| 2020-02-27 | 2020_03_05_Batch6 | cmQTLplate7-2-27-20 |
+| 2019-08-27 | 2019_09_06_Batch5 | BR00107338 |
+| 2019-08-20 | 2019_09_06_Batch5 | BR00107339 |
+| 2019-08-09 | 2019_08_15_Batch4 | BR00106708 |
+| 2019-08-05 | 2019_08_15_Batch4 | BR00106709 |
+| 2019-06-03 | 2019_06_10_Batch3 | cmqtlpl261-2019-mt |
+| 2019-05-31 | 2019_06_10_Batch3 | cmqtlpl1.5-31-2019-mt |
+
+
 ## Downloading sample images
 
 The notebook `⁨1.profile-cell-lines⁩/7.select_images_to_print.Rmd` shows how to download sample images.
