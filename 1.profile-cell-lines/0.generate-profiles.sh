@@ -71,6 +71,10 @@ git clone git@github.com:CellProfiler/Distributed-CellProfiler.git
 # Specify pipeline set
 PIPELINE_SET=cellpainting_ipsc_20x_phenix_with_bf_bin1_cp3/
 
+# NOTE:The actual version of the pipeline run was this:
+# https://github.com/broadinstitute/imaging-platform-pipelines/pull/17/commits/1c3ed24cffc042195e01b6bd791353a2f75fc450
+# which differs from the master branch only in the way the outputs are stored. 
+
 # Follow these steps verbatim
 # https://cytomining.github.io/profiling-handbook/setup-pipelines-and-images.html#prepare-images
 
