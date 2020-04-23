@@ -44,7 +44,7 @@ These are the counts of cell lines across the full dataset (n=308 in total)
 
 These are the details of batches – when they were imaged and the plate IDs of the constituent plates (a.k.a. `Metadata_Plate`)
 
-| Date imaged | Batch ID | Metadata_Plate |
+| Fixation date | Batch ID | Metadata_Plate |
 |:------------|----------| :-------|
 | 2020-02-27 | 2020_03_05_Batch6 | cmQTLplate7-2-27-20 |
 | 2019-08-27 | 2019_09_06_Batch5 | BR00107338 |
