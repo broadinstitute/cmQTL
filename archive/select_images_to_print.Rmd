@@ -1,0 +1,87 @@
+---
+title: "Select images to print"
+output: html_document
+---
+
+```{r message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(magrittr)
+library(tidyverse)
+library(stringr)
+```
+
+## Prepare load_data 
+
+```{r prepare_load_data, message=FALSE}
+load_data <- read_csv("../../load_data_csv/PILOT_1/BR00098071/load_data.csv")
+
+convert_to_s3_url <- function(pathname, filename)  {
+  file.path(
+      str_replace(pathname, 
+              "/home/ubuntu/bucket", 
+              "https://s3.amazonaws.com/imaging-platform"),
+      filename
+  )
+  
+}
+
+channels <- c("DNA", "ER", "RNA", "AGP", "Mito")
+
+for (channel in channels) {
+  url_sym <- rlang::sym(str_c("URL_Orig", channel))
+  
+  path_sym <- rlang::sym(str_c("PathName_Orig", channel))
+   
+  file_sym <- rlang::sym(str_c("FileName_Orig", channel))
+   
+  load_data %<>% 
+    mutate(!!url_sym := convert_to_s3_url((!!path_sym), (!!file_sym)))
+  
+}
+
+```
+
+## Get metadata
+
+```{r message=FALSE}
+metadata <- 
+  read_csv("../../backend/PILOT_1/BR00098071/BR00098071_augmented.csv") %>%
+  select(matches("^Metadata_")) %>%
+  distinct()
+
+```
+
+## Select images to be printed
+
+```{r}
+
+filenames_header <- paste0("FileName_Orig", channels)
+
+images <- 
+  load_data %>%
+  select(Metadata_Plate, Metadata_Well, Metadata_Row, Metadata_FieldID, matches("^URL_"), one_of(filenames_header)) %>%
+  inner_join(metadata, by = c("Metadata_Plate", "Metadata_Well")) %>%
+  filter(Metadata_FieldID == 5 & Metadata_Row == 8) %>%
+  select(matches("^Metadata"), matches("^URL"), matches("^FileName_Orig")) %>%
+  select(-Metadata_Row, -Metadata_FieldID, -Metadata_seeding_density_level)
+```
+
+```{r}
+images %>%
+  select(matches("^URL_")) %>%
+  gather(k, v) %>%
+  select("v") %>%
+  write_tsv("images_to_download.txt", col_names = FALSE)
+  
+```
+
+```{sh}
+#wget -i images_to_download.txt
+```
+
+```{r}
+images %>%
+  select(matches("^Metadata"),  matches("^FileName_Orig")) %>%
+  write_csv("gwas_images.csv")
+```
+

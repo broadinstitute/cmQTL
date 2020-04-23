@@ -41,9 +41,10 @@ cd ~/efs/${PROJECT_NAME}/workspace/
 mkdir -p log/${BATCH_ID}
 PLATES=$(readlink -f ~/efs/${PROJECT_NAME}/workspace/scratch/${BATCH_ID}/plates_to_process.txt)
 
-# the scripts were run verbatim for these two additional batches
+# the scripts were run verbatim for these three additional batches
 #BATCH_ID=2019_08_15_Batch4 
 #BATCH_ID=2019_09_06_Batch5
+#BATCH_ID=2020_03_05_Batch6
 
 ############################
 # Step 2 - Generate single cell profiles
