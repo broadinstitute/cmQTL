@@ -1,0 +1,164 @@
+---
+title: "Inspect cmQTLplate7-2-27-20"
+output: github_document
+---
+
+```{r}
+suppressPackageStartupMessages(library(magrittr))
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+
+This chunk was run on AWS 
+
+Randomly sample ~5000 cells
+
+```{r eval=FALSE}
+sqlite_file <- "../../../backend/2020_03_05_Batch6/cmQTLplate7-2-27-20/cmQTLplate7-2-27-20.sqlite"
+
+db <- DBI::dbConnect(RSQLite::SQLite(), sqlite_file, loadable.extensions = TRUE)
+
+nuclei <- 
+  DBI::dbGetQuery(db, "SELECT * FROM Nuclei ORDER BY RANDOM() LIMIT 5000;") %>%
+  collect() %>%
+  select(-ObjectNumber)
+
+nuclei_lut <-
+  nuclei %>%
+  select(TableNumber, ImageNumber, Nuclei_Number_Object_Number)
+
+cells <- 
+  tbl(src = db, "Cells") %>% 
+  select(-ObjectNumber) %>% 
+  inner_join(
+    nuclei_lut,
+    by = c("TableNumber", 
+           "ImageNumber", 
+           "Cells_Parent_Nuclei" = "Nuclei_Number_Object_Number"),
+    copy = TRUE
+  ) %>%
+  collect()
+
+cytoplasm <- 
+  tbl(src = db, "Cytoplasm") %>% 
+  select(-ObjectNumber) %>% 
+  inner_join(
+    nuclei_lut,
+    by = c("TableNumber", 
+           "ImageNumber", 
+           "Cytoplasm_Parent_Nuclei" = "Nuclei_Number_Object_Number"),
+    copy = TRUE
+  ) %>%
+  collect()
+
+nuclei_cells <- 
+  inner_join(
+    nuclei,
+    cells,
+    by = c("TableNumber", 
+           "ImageNumber", 
+           "Nuclei_Number_Object_Number" = "Cells_Parent_Nuclei")
+  )
+
+nuclei_cells_cytoplasm <- 
+  inner_join(
+    nuclei_cells,
+    cytoplasm,
+    by = c("TableNumber",
+           "ImageNumber",
+           "Cells_Number_Object_Number" = "Cytoplasm_Parent_Cells")
+  )
+
+nuclei_cells_cytoplasm %>% write_csv("cmQTLplate7-2-27-20_sampled.csv.gz")
+```
+
+Load the subsample
+
+```{r}
+sampled_cells <- read_csv("data/cmQTLplate7-2-27-20_sampled.csv.gz")
+```
+
+Specify which features are going to be check for NA
+`Area` features are excluded because we are going to use them to check whether they may be able to predict whether a feature is `NA`
+
+```{r}
+no_check_na_features <- 
+  c("TableNumber", "ImageNumber", 
+      "Cells_AreaShape_Area",
+      "Cytoplasm_AreaShape_Area",
+      "Nuclei_AreaShape_Area")
+
+check_na_features <- 
+  setdiff(
+    names(sampled_cells),
+    no_check_na_features
+  )
+```
+
+Summarize number of cells with NA values per feature
+
+```{r}
+na_frequency <- 
+  sampled_cells %>% 
+  summarize_at(check_na_features, ~sum(is.na(.))) %>%
+  pivot_longer(everything(), values_to = "number_of_na")
+```
+
+
+```{r}
+na_frequency %>%
+  filter(number_of_na >= 10) %>%
+  arrange(desc(number_of_na)) %>%
+  knitr::kable()
+```
+
+Report whether a feature value is NA per cell
+
+```{r}
+na_flag <- 
+  sampled_cells %>% 
+  mutate_at(check_na_features, ~as.double(is.na(.)))
+```
+
+For features that have more than 10 cells as `NA`, how many are non-correlation features?
+(none)
+
+```{r}
+na_flag %>% 
+  summarize_at(check_na_features, sum) %>%
+  pivot_longer(everything(), values_to = "number_of_na") %>%
+  filter(number_of_na >= 10) %>%
+  arrange(desc(number_of_na)) %>% 
+  filter(!str_detect(name, "_Correlation_")) %>%
+  knitr::kable()
+```
+
+Pick the feature with the most number of `NA`s and check whether it can be explained by Area features
+(nope)
+
+```{r}
+data_matrix <- 
+  na_flag %>%
+  mutate(Nuclei_Correlation_Costes_AGP_Mito = scale(Nuclei_Correlation_Costes_AGP_Mito)) %>%
+  select(one_of(c(no_check_na_features, "Nuclei_Correlation_Costes_AGP_Mito"))) %>%
+  select(-TableNumber, -ImageNumber)
+
+model <- lm(Nuclei_Correlation_Costes_AGP_Mito ~ ., data_matrix)
+
+summary(model)
+```
+
+Check other features
+
+```{r}
+data_matrix <- 
+  na_flag %>%
+  mutate(Cells_Correlation_Costes_AGP_Mito = scale(Cells_Correlation_Costes_AGP_Mito)) %>%
+  select(one_of(c(no_check_na_features, "Cells_Correlation_Costes_AGP_Mito"))) %>%
+  select(-TableNumber, -ImageNumber)
+
+model <- lm(Cells_Correlation_Costes_AGP_Mito ~ ., data_matrix)
+
+summary(model)
+```
+
