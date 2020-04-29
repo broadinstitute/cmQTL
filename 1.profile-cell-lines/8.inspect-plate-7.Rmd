@@ -3,6 +3,25 @@ title: "Inspect cmQTLplate7-2-27-20"
 output: github_document
 ---
 
+```{r echo=FALSE}
+show_table <- print
+```
+
+If running interactively in RStudio, 
+
+- change `output` in the header of this markdown to `html_notebook` and
+- change to `eval=TRUE` below
+
+When knitting for pushing to GitHub,
+
+- change `output` in the header of this markdown to `github_document` and
+- change to `eval=FALSE` below
+
+```{r eval=TRUE}
+show_table <- knitr::kable
+```
+
+
 ```{r}
 suppressPackageStartupMessages(library(magrittr))
 suppressPackageStartupMessages(library(tidyverse))
@@ -117,7 +136,7 @@ na_frequency %>%
 na_frequency %>%
   filter(number_of_na >= 10) %>%
   arrange(desc(number_of_na)) %>%
-  knitr::kable()
+  show_table
 ```
 
 Report whether a feature value is NA per cell
@@ -138,7 +157,7 @@ na_flag %>%
   filter(number_of_na >= 10) %>%
   arrange(desc(number_of_na)) %>% 
   filter(!str_detect(name, "_Correlation_")) %>%
-  knitr::kable()
+  show_table
 ```
 
 Pick the feature with the most number of `NA`s and check whether it can be explained by Area features
@@ -168,5 +187,95 @@ data_matrix <-
 model <- lm(Cells_Correlation_Costes_AGP_Mito ~ ., data_matrix)
 
 summary(model)
+```
+
+For what 
+
+```{r}
+sorted_features_by_na <- 
+  na_frequency %>%
+  filter(number_of_na >= 10) %>%
+  arrange(desc(number_of_na))
+```
+
+
+```{r}
+na_flag_long <- 
+  na_flag %>%
+  select(-one_of(no_check_na_features)) %>%
+  select(-matches("_Costes_|_RWC_|_Manders_|_K_")) %>%
+  rownames_to_column("cell_id") %>%
+  mutate(cell_id = as.integer(cell_id)) %>%
+  pivot_longer(-cell_id)
+```
+
+
+```{r}
+na_counts_per_cell <-
+  na_flag_long %>%
+  group_by(cell_id) %>%
+  summarize(value = sum(value)) %>%
+  arrange(desc(value))
+```
+
+
+```{r}
+na_counts_per_cell %>%
+  slice(1:20) %>%
+  show_table
+```
+
+
+```{r}
+na_counts_per_cell %>% 
+  filter(value < 100) %>%
+  ggplot(aes(value)) + geom_histogram(binwidth = 1)
+```
+
+
+```{r}
+na_counts_per_cell %>% 
+  filter(between(value, 1, 100)) %>%
+  ggplot(aes(value)) + geom_histogram(binwidth = 1)
+```
+
+```{r}
+
+bad_cells <- 
+  na_counts_per_cell %>% 
+  filter(value > 100)
+
+na_flag_long %>% 
+  anti_join(bad_cells) %>%
+  filter(value == 1) %>%
+  select(name) %>%
+  group_by(name) %>%
+  tally() %>%
+  arrange(desc(n))
+```
+
+```{r}
+cells_with_na <- 
+  na_flag_long %>% 
+  anti_join(
+    na_counts_per_cell %>% 
+      filter(value > 100) %>%
+      select(cell_id)
+  ) %>%
+  group_by(cell_id) %>%
+  summarize(has_na_feature = sum(value) > 0) %>%
+  filter(has_na_feature)
+```
+
+First remove these many "bad" cells (many features are `NA`)
+
+```{r}
+bad_cells %>% count %>% show_table
+```
+
+Next remove all Correlation features, then report how many cells have any feature as `NA`
+
+```{r}
+cells_with_na %>% count %>% show_table
 ```
 
