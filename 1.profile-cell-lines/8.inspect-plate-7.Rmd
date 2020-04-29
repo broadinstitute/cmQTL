@@ -189,7 +189,6 @@ model <- lm(Cells_Correlation_Costes_AGP_Mito ~ ., data_matrix)
 summary(model)
 ```
 
-For what 
 
 ```{r}
 sorted_features_by_na <- 
@@ -251,7 +250,9 @@ na_flag_long %>%
   select(name) %>%
   group_by(name) %>%
   tally() %>%
-  arrange(desc(n))
+  arrange(desc(n)) %>%
+  slice(1:20) %>%
+  show_table
 ```
 
 ```{r}
