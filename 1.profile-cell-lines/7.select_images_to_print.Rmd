@@ -128,30 +128,30 @@ images_pivoted %>%
 
 ```
 
-```{sh}
-# IMAGE_DIR=/tmp/cmqtl
-# 
-# mkdir -p $IMAGE_DIR
-# 
-# cut -d"," -f1 data/images_to_download.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
-# 
-# parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $IMAGE_DIR/{} 
-# 
-# parallel \
-#   --header ".*\n" \
-#   -C "," \
-#   -a data/sample_images.csv \
-#   --eta \
-#   --joblog ${IMAGE_DIR}/download.log \
-#   --results ${IMAGE_DIR}/download \
-#   --files \
-#   wget -O ${IMAGE_DIR}/{1}/{2} {3}
-  
-```
-
 ```{r}
 images %>%
   select(matches("^Metadata"),  matches("^FileName_Orig")) %>%
   write_csv("data/sample_images_metadata.csv")
+```
+
+Run this on command line to download the images:
+
+```{sh eval=FALSE}
+IMAGE_DIR=/tmp/cmqtl
+
+mkdir -p $IMAGE_DIR
+
+cut -d"," -f1 data/sample_images.csv | grep -v Metadata_Plate| sort -u > /tmp/plates.txt
+
+parallel -a /tmp/plates.txt --no-run-if-empty mkdir -p $IMAGE_DIR/{} 
+
+parallel \
+ --header ".*\n" \
+ -C "," \
+ -a data/sample_images.csv \
+ --eta \
+ --joblog ${IMAGE_DIR}/download.log \
+ wget -q -O ${IMAGE_DIR}/{1}/{4} {5}
+  
 ```
 
