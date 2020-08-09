@@ -38,11 +38,13 @@ mkdir -p ~/efs/${PROJECT_NAME}/workspace/
 cd ~/efs/${PROJECT_NAME}/workspace/
 mkdir -p log/${BATCH_ID}
 
-# the scripts were run verbatim for these two additional batches with appropriate modifications to 
+# the scripts were run verbatim for these  additional batches with appropriate modifications to 
 # SAMPLE_PLATE_ID and contents of $PLATES
 #BATCH_ID=2019_08_15_Batch4 
 #BATCH_ID=2019_09_06_Batch5
 #BATCH_ID=2020_03_05_Batch6
+#BATCH_ID=2020_03_05_Batch6
+#BATCH_ID=2020_07_22_Batch7
 
 # Step 1.3 - Create an EBS temp directory for creating the backend
 mkdir ~/ebs_tmp
