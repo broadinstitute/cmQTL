@@ -2,9 +2,27 @@
 title: "Inspect profiles"
 subtitle: "cmQTL project"
 author: "Shantanu Singh"
-date: "October 2019"
+date: "July 2020"
 output: github_document
 ---
+
+```{r echo=FALSE}
+show_table <- print
+```
+
+If running interactively in RStudio, 
+
+- change `output` in the header of this markdown to `html_notebook` and
+- change to `eval=TRUE` below
+
+When knitting for pushing to GitHub,
+
+- change `output` in the header of this markdown to `github_document` and
+- change to `eval=TRUE` below
+
+```{r eval=TRUE}
+show_table <- knitr::kable
+```
 
 ```{r}
 library(ggplot2)
@@ -21,7 +39,8 @@ plates <- c("BR00106708",
             "BR00107338", 
             "BR00107339", 
             "cmqtlpl1.5-31-2019-mt", 
-            "cmqtlpl261-2019-mt"
+            "cmqtlpl261-2019-mt",
+            "cmQTLplate7-7-22-20"
 )
 
 plate_id <- plates[[1]]
@@ -58,8 +77,10 @@ profiles %>%
   group_by(Metadata_line_ID) %>%
   tally(name = "n_plates") %>%
   group_by(n_plates) %>%
-  tally(name = "n_lines")
+  tally(name = "n_lines") %>%
+  show_table
 ```
+
 List cell lines that are present on more than one plate
 
 ```{r}
@@ -70,6 +91,7 @@ profiles %>%
   filter(n_plates == 2) %>%
   inner_join(profiles %>% distinct(Metadata_Plate, Metadata_line_ID)) %>%
   ungroup() %>%
-  arrange(Metadata_line_ID)
+  arrange(Metadata_line_ID) %>%
+  show_table
 ```
 

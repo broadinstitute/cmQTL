@@ -27,7 +27,7 @@ The single cell SQLite files are available on S3:
 | [BR00106709](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_08_15_Batch4/BR00106709/BR00106709.sqlite) |
 | [BR00107338](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_09_06_Batch5/BR00107338/BR00107338.sqlite) |
 | [BR00107339](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2019_09_06_Batch5/BR00107339/BR00107339.sqlite) |
-| [cmQTLplate7-2-27-20](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2020_03_05_Batch6/cmQTLplate7-2-27-20/cmQTLplate7-2-27-20.sqlite) |
+| [cmQTLplate7-7-22-20](https://imaging-platform.s3.amazonaws.com/projects/2018_06_05_cmQTL/workspace/backend/2020_07_22_Batch7/cmQTLplate7-7-22-20/cmQTLplate7-7-22-20.sqlite) |
 
 
 These are the counts of cell lines across the full dataset (n=308 in total)
@@ -40,13 +40,13 @@ These are the counts of cell lines across the full dataset (n=308 in total)
 |BR00106709            | 45|
 |BR00107338            | 40|
 |BR00107339            | 48|
-|cmQTLplate7-2-27-20   | 48|
+|cmQTLplate7-7-22-20   | 48|
 
 These are the details of batches – when they were imaged and the plate IDs of the constituent plates (a.k.a. `Metadata_Plate`)
 
 | Fixation date | Batch ID | Metadata_Plate |
 |:------------|----------| :-------|
-| 2020-02-27 | 2020_03_05_Batch6 | cmQTLplate7-2-27-20 |
+| 2020-07-22 | 2020_07_22_Batch7 | cmQTLplate7-7-22-20 |
 | 2019-08-27 | 2019_09_06_Batch5 | BR00107338 |
 | 2019-08-20 | 2019_09_06_Batch5 | BR00107339 |
 | 2019-08-09 | 2019_08_15_Batch4 | BR00106708 |
