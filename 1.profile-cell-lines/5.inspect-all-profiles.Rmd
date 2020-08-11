@@ -33,6 +33,19 @@ library(tidyverse)
 
 # Read profiles
 
+
+```{r}
+batch_metadata <- 
+  tribble(~Metadata_fixation_date,~Metadata_batch_id,~Metadata_Plate,
+          "2020-07-22","2020_07_22_Batch7","cmQTLplate7-7-22-20",
+          "2019-08-27","2019_09_06_Batch5","BR00107338",
+          "2019-08-20","2019_09_06_Batch5","BR00107339",
+          "2019-08-09","2019_08_15_Batch4","BR00106708",
+          "2019-08-05","2019_08_15_Batch4","BR00106709",
+          "2019-06-03","2019_06_10_Batch3","cmqtlpl261-2019-mt",
+          "2019-05-31","2019_06_10_Batch3","cmqtlpl1.5-31-2019-mt")
+```
+
 ```{r}
 plates <- c("BR00106708", 
             "BR00106709", 
@@ -44,7 +57,10 @@ plates <- c("BR00106708",
 )
 
 plate_id <- plates[[1]]
+```
 
+
+```{r}
 profiles <- 
   plates %>%
   map_df(~read_csv(file.path("profiles", paste0(.x, "_normalized.csv")), 
@@ -57,13 +73,39 @@ profiles <-
                      Metadata_well_position = col_character()
                    ),
                    progress = FALSE))
+```
 
+
+```{r}
+cell_counts <- 
+  plates %>%
+  map_df(~read_csv(file.path("profiles", paste0(.x, "_count.csv")), 
+                   col_types = cols(
+                     .default = col_double(),
+                     Metadata_Plate = col_character(),
+                     Metadata_Well = col_character()
+                   ),
+                   progress = FALSE))
+```
+
+
+```{r}
+cell_counts %<>% 
+  inner_join(profiles %>% 
+               select(Metadata_Plate, 
+                      Metadata_Well, 
+                      Metadata_line_ID)
+             ) %>% 
+  inner_join(batch_metadata)
 ```
 
 `Metadata_line_ID` are empty wells or those that failed
 
 ```{r}
 profiles %<>%
+  filter(Metadata_line_ID != 0)
+
+cell_counts %<>%
   filter(Metadata_line_ID != 0)
 ```
 
@@ -72,7 +114,7 @@ profiles %<>%
 Across how many plates is each cell line plated?
 
 ```{r}
-profiles %>%
+cell_counts %>%
   distinct(Metadata_Plate, Metadata_line_ID) %>%
   group_by(Metadata_line_ID) %>%
   tally(name = "n_plates") %>%
@@ -84,7 +126,7 @@ profiles %>%
 List cell lines that are present on more than one plate
 
 ```{r}
-profiles %>%
+cell_counts %>%
   distinct(Metadata_Plate, Metadata_line_ID) %>%
   group_by(Metadata_line_ID) %>%
   tally(name = "n_plates") %>%
@@ -93,5 +135,67 @@ profiles %>%
   ungroup() %>%
   arrange(Metadata_line_ID) %>%
   show_table
+```
+
+```{r}
+cell_counts_summary_per_plate <-
+  cell_counts %>%
+  group_by(Metadata_batch_id, Metadata_Plate) %>%
+  summarize(Count_Cells_median = median(Count_Cells),
+            Count_Cells_mean = mean(Count_Cells),
+            Count_Cells_sum = sum(Count_Cells)
+            )
+
+cell_counts_summary_full <-
+  cell_counts %>%
+  summarize(Count_Cells_median = median(Count_Cells),
+            Count_Cells_mean = mean(Count_Cells))
+```
+
+
+```{r}
+p <-
+  ggplot(cell_counts,
+         aes(as.factor(Metadata_line_ID), Count_Cells)) +
+  geom_boxplot() +
+  geom_hline(data = cell_counts_summary_per_plate,
+             aes(yintercept = Count_Cells_median),
+             color = "red", linetype = "dashed") +
+  geom_hline(data = cell_counts_summary_full,
+             aes(yintercept = Count_Cells_median),
+             color = "blue") +
+  facet_wrap(~ Metadata_batch_id ~ Metadata_Plate,
+             scales = "free_x",
+             ncol = 3) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  ylim(c(
+    sort(cell_counts$Count_Cells, decreasing = FALSE)[5],
+    sort(cell_counts$Count_Cells, decreasing = TRUE)[5]
+  )) +
+  ggtitle("Cell counts across plates", subtitle = "Red: median per plate, Blue: median across all plates. Top/bottom 5 values across full dataset have been trimmed in this plot.")
+
+#print(p)
+
+ggsave("figures/all_plates_counts_boxplot.pdf",
+       p,
+       width = 20,
+       height = 8)
+```
+
+
+```{r}
+p <-
+  ggplot(cell_counts_summary_per_plate,
+         aes(interaction(Metadata_batch_id, Metadata_Plate), Count_Cells_sum)) +
+  geom_col() +
+  coord_flip() +
+  ggtitle("Total cell counts per plate")
+
+print(p)
+
+ggsave("figures/all_plates_counts_sum.pdf",
+       p,
+       width = 8,
+       height = 5)
 ```
 
