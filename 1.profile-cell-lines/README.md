@@ -42,7 +42,7 @@ These are the counts of cell lines across the full dataset (n=308 in total)
 |BR00107339            | 48|
 |cmQTLplate7-7-22-20   | 48|
 
-These are the details of batches – when they were imaged and the plate IDs of the constituent plates (a.k.a. `Metadata_Plate`)
+These are the details of batches - when they were imaged and the plate IDs of the constituent plates (a.k.a. `Metadata_Plate`)
 
 | Fixation date | Batch ID | Metadata_Plate |
 |:------------|----------| :-------|

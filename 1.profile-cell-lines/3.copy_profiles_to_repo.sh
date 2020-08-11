@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # cmQTL processing pipeline
-# Shantanu Singh, 2019
+# Shantanu Singh, 2020
 #
 # Here, we copy the profiles generated from the backend into this repo
 
@@ -10,9 +10,10 @@
 # 2019_08_15_Batch4,BR00106709
 # 2019_08_15_Batch4,BR00106708
 # 2019_09_06_Batch5,BR00107338
-# 2019_09_06_Batch5,BR00107339" > /tmp/batch_plate.txt
+# 2019_09_06_Batch5,BR00107339,
+# 2020_07_22_Batch7,cmQTLplate7-2-27-20" > /tmp/batch_plate.txt
 
-echo "2019_06_10_Batch3,cmqtlpl1.5-31-2019-mt" > /tmp/batch_plate.txt
+echo "2020_07_22_Batch7,cmQTLplate7-2-27-20" > /tmp/batch_plate.txt
 
 parallel \
   -a /tmp/batch_plate.txt \
