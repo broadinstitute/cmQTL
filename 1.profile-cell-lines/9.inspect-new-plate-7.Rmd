@@ -1,0 +1,254 @@
+---
+title: "Inspect cmQTLplate7-7-22-20 (new plate 7)"
+output: github_document
+---
+
+```{r echo=FALSE}
+show_table <- print
+```
+
+If running interactively in RStudio, 
+
+- change `output` in the header of this markdown to `html_notebook` and
+- change to `eval=TRUE` below
+
+When knitting for pushing to GitHub,
+
+- change `output` in the header of this markdown to `github_document` and
+- change to `eval=FALSE` below
+
+```{r eval=TRUE}
+show_table <- knitr::kable
+```
+
+
+```{r}
+suppressPackageStartupMessages(library(magrittr))
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+
+This chunk was run on AWS 
+
+Randomly sample ~5000 cells
+
+```{r eval=FALSE}
+sqlite_file <- "../../../backend/2020_03_05_Batch6/cmQTLplate7-7-22-20/cmQTLplate7-7-22-20.sqlite"
+
+db <- DBI::dbConnect(RSQLite::SQLite(), sqlite_file, loadable.extensions = TRUE)
+
+nuclei <- 
+  DBI::dbGetQuery(db, "SELECT * FROM Nuclei ORDER BY RANDOM() LIMIT 5000;") %>%
+  collect() %>%
+  select(-ObjectNumber)
+
+nuclei_lut <-
+  nuclei %>%
+  select(TableNumber, ImageNumber, Nuclei_Number_Object_Number)
+
+cells <- 
+  tbl(src = db, "Cells") %>% 
+  select(-ObjectNumber) %>% 
+  inner_join(
+    nuclei_lut,
+    by = c("TableNumber", 
+           "ImageNumber", 
+           "Cells_Parent_Nuclei" = "Nuclei_Number_Object_Number"),
+    copy = TRUE
+  ) %>%
+  collect()
+
+cytoplasm <- 
+  tbl(src = db, "Cytoplasm") %>% 
+  select(-ObjectNumber) %>% 
+  inner_join(
+    nuclei_lut,
+    by = c("TableNumber", 
+           "ImageNumber", 
+           "Cytoplasm_Parent_Nuclei" = "Nuclei_Number_Object_Number"),
+    copy = TRUE
+  ) %>%
+  collect()
+
+nuclei_cells <- 
+  inner_join(
+    nuclei,
+    cells,
+    by = c("TableNumber", 
+           "ImageNumber", 
+           "Nuclei_Number_Object_Number" = "Cells_Parent_Nuclei")
+  )
+
+nuclei_cells_cytoplasm <- 
+  inner_join(
+    nuclei_cells,
+    cytoplasm,
+    by = c("TableNumber",
+           "ImageNumber",
+           "Cells_Number_Object_Number" = "Cytoplasm_Parent_Cells")
+  )
+
+nuclei_cells_cytoplasm %>% write_csv("cmQTLplate7-7-22-20_sampled.csv.gz")
+```
+
+Load the subsample
+
+```{r}
+sampled_cells <- read_csv("data/cmQTLplate7-7-22-20_sampled.csv.gz")
+```
+
+Specify which features are going to be check for NA
+`Area` features are excluded because we are going to use them to check whether they may be able to predict whether a feature is `NA`
+
+```{r}
+no_check_na_features <- 
+  c("TableNumber", "ImageNumber", 
+      "Cells_AreaShape_Area",
+      "Cytoplasm_AreaShape_Area",
+      "Nuclei_AreaShape_Area")
+
+check_na_features <- 
+  setdiff(
+    names(sampled_cells),
+    no_check_na_features
+  )
+```
+
+Summarize number of cells with NA values per feature
+
+```{r}
+na_frequency <- 
+  sampled_cells %>% 
+  summarize_at(check_na_features, ~sum(is.na(.))) %>%
+  pivot_longer(everything(), values_to = "number_of_na")
+```
+
+
+```{r}
+na_frequency %>%
+  arrange(desc(number_of_na)) %>%
+  filter(number_of_na >= 0) %>%
+  write_csv("data/new_plate7_na_features.csv")
+```
+
+
+```{r}
+na_frequency %>%
+  filter(number_of_na >= 10) %>%
+  arrange(desc(number_of_na)) %>%
+  slice(1:20) %>%
+  show_table
+```
+
+Report whether a feature value is NA per cell
+
+```{r}
+na_flag <- 
+  sampled_cells %>% 
+  mutate_at(check_na_features, ~as.double(is.na(.)))
+```
+
+For features that have more than 10 cells as `NA`, how many are non-correlation features?
+(none)
+
+```{r}
+na_flag %>% 
+  summarize_at(check_na_features, sum) %>%
+  pivot_longer(everything(), values_to = "number_of_na") %>%
+  filter(number_of_na >= 10) %>%
+  arrange(desc(number_of_na)) %>% 
+  filter(!str_detect(name, "_Correlation_")) %>%
+  slice(1:20) %>%
+  show_table
+```
+
+
+```{r}
+sorted_features_by_na <- 
+  na_frequency %>%
+  filter(number_of_na >= 10) %>%
+  arrange(desc(number_of_na))
+```
+
+
+```{r}
+na_flag_long <- 
+  na_flag %>%
+  select(-one_of(no_check_na_features)) %>%
+  select(-matches("_Costes_|_RWC_|_Manders_|_K_")) %>%
+  rownames_to_column("cell_id") %>%
+  mutate(cell_id = as.integer(cell_id)) %>%
+  pivot_longer(-cell_id)
+```
+
+
+```{r}
+na_counts_per_cell <-
+  na_flag_long %>%
+  group_by(cell_id) %>%
+  summarize(value = sum(value)) %>%
+  arrange(desc(value))
+```
+
+
+```{r}
+na_counts_per_cell %>%
+  slice(1:20) %>%
+  show_table
+```
+
+
+```{r}
+na_counts_per_cell %>% 
+  filter(value < 100) %>%
+  ggplot(aes(value)) + geom_histogram(binwidth = 1)
+```
+
+
+```{r}
+na_counts_per_cell %>% 
+  filter(value > 1) %>%
+  ggplot(aes(value)) + geom_histogram(binwidth = 1)
+```
+
+```{r}
+bad_cells <- 
+  na_counts_per_cell %>% 
+  filter(value > 100)
+
+na_flag_long %>% 
+  anti_join(bad_cells) %>%
+  filter(value == 1) %>%
+  select(name) %>%
+  group_by(name) %>%
+  tally() %>%
+  arrange(desc(n)) %>%
+  slice(1:20) %>%
+  show_table
+```
+
+```{r}
+cells_with_na <- 
+  na_flag_long %>% 
+  anti_join(
+    na_counts_per_cell %>% 
+      filter(value > 100) %>%
+      select(cell_id)
+  ) %>%
+  group_by(cell_id) %>%
+  summarize(has_na_feature = sum(value) > 0) %>%
+  filter(has_na_feature)
+```
+
+First remove these many "bad" cells (many features are `NA`)
+
+```{r}
+bad_cells %>% count %>% show_table
+```
+
+Next remove all Correlation features, then report how many cells have any feature as `NA`
+
+```{r}
+cells_with_na %>% count %>% show_table
+```
+
