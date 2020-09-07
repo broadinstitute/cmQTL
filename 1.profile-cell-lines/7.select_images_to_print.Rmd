@@ -53,7 +53,7 @@ plates <- c("cmqtlpl1.5-31-2019-mt",
             "BR00106709",
             "BR00107338",
             "BR00107339",
-            "cmQTLplate7-2-27-20")
+            "cmQTLplate7-7-22-20")
 
 metadata <- 
   map_df(
