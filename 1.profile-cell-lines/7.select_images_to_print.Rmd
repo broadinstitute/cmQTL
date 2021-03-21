@@ -199,7 +199,9 @@ images %<>%
              "analysis",
              Metadata_Batch,
              Metadata_Plate,
+             "analysis",
              paste(Metadata_Plate, Metadata_Well, Metadata_FieldID, sep = "-"),
+             "outlines",
              glue("{Metadata_Well}_s{Metadata_FieldID}--{cell_suffix}")
            )
          )
