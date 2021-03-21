@@ -83,30 +83,70 @@ metadata <-
 ```{r}
 metadata %>% distinct(Metadata_plating_density)
 ```
+## Select cell lines to print
+
+```{r}
+cell_lines <-
+  tibble::tribble(
+    ~Metadata_line_ID, ~Metadata_Plate,
+    "12","cmqtlpl1.5-31-2019-mt",
+    "29","cmqtlpl1.5-31-2019-mt",
+    "30","cmqtlpl1.5-31-2019-mt",
+    "32","cmqtlpl1.5-31-2019-mt",
+    "112","BR00107338",
+    "113","BR00106709",
+    "125","BR00106709",
+    "136","BR00106709",
+    "153","BR00106708",
+    "155","BR00106708",
+    "158","BR00106708",
+    "181","BR00106708",
+    "195","BR00107339",
+    "206","BR00107339",
+    "213","BR00107339",
+    "214","BR00107339",
+    "215","BR00107339",
+    "222","BR00107339",
+    "227","BR00107339",
+    "233","BR00107338",
+    "238","BR00107338",
+    "248","BR00107338",
+    "255","BR00107338",
+    "260","BR00107338",
+    "265","BR00107338",
+    "277","cmQTLplate7-7-22-20"
+  )
+
+metadata %<>% inner_join(cell_lines)
+```
 
 
 ## Sample one well per cell line
 
 ```{r}
-set.seed(5)
+# set.seed(5)
+# 
+# metadata_sampled <-
+#   metadata %>%
+#   group_by(Metadata_line_ID) %>%
+#   sample_n(1) %>%
+#   ungroup()
 
 metadata_sampled <-
-  metadata %>%
-  group_by(Metadata_line_ID) %>%
-  sample_n(1) %>%
-  ungroup()
+  metadata
 ```
 
 ## Select a fixed field (a.k.a site)
 
 ```{r}
-fieldIDs <- c(3, 5)
+#fieldIDs <- c(3, 5)
+#
+fieldIDs <- c(1, 2, 3, 4, 5, 6, 7, 8, 9)
 ```
 
 ## Select images to be printed
 
 ```{r}
-
 filenames_header <- paste0("FileName_Orig", channels)
 
 images <- 
@@ -115,7 +155,58 @@ images <-
   inner_join(metadata_sampled, by = c("Metadata_Plate", "Metadata_Well")) %>%
   filter(Metadata_FieldID %in% fieldIDs) %>%
   select(matches("^Metadata"), matches("^URL"), matches("^FileName_Orig"))
+```
 
+
+```{r}
+batch_plate <-
+  tribble(
+    ~Metadata_Batch, ~Metadata_Plate,
+    "2020_07_22_Batch7", "cmQTLplate7-7-22-20",
+    "2019_09_06_Batch5", "BR00107338",
+    "2019_09_06_Batch5", "BR00107339",
+    "2019_08_15_Batch4", "BR00106708",
+    "2019_08_15_Batch4", "BR00106709",
+    "2019_06_10_Batch3", "cmqtlpl261-2019-mt",
+    "2019_06_10_Batch3", "cmqtlpl1.5-31-2019-mt"
+  )
+
+prefix <- "https://s3.amazonaws.com/imaging-platform/projects/2018_06_05_cmQTL"
+
+# s3://imaging-platform/projects/2018_06_05_cmQTL/workspace/analysis/2019_06_10_Batch3/PLATE/analysis/PLATE-WELL-SITE/outlines/WELL_sSITE--nuclei_outlines.png 
+# s3://imaging-platform/projects/2018_06_05_cmQTL/workspace/analysis/2019_06_10_Batch3/PLATE/analysis/PLATE-WELL-SITE/outlines/WELL_sSITE--cell_outlines.png.
+
+nuclei_suffix <- "nuclei_outlines.png"
+cell_suffix <- "cell_outlines.png"
+
+images %<>%
+  inner_join(batch_plate) %>%
+  mutate(URL_nuclei_outlines = 
+           file.path(
+             prefix,
+             "workspace",
+             "analysis",
+             Metadata_Batch,
+             Metadata_Plate,
+             paste(Metadata_Plate, Metadata_Well, Metadata_FieldID, sep = "-"),
+             glue("{Metadata_Well}_s{Metadata_FieldID}--{nuclei_suffix}")
+           )
+         ) %>%
+  mutate(URL_cell_outlines = 
+           file.path(
+             prefix,
+             "workspace",
+             "analysis",
+             Metadata_Batch,
+             Metadata_Plate,
+             paste(Metadata_Plate, Metadata_Well, Metadata_FieldID, sep = "-"),
+             glue("{Metadata_Well}_s{Metadata_FieldID}--{cell_suffix}")
+           )
+         )
+```
+
+
+```{r}
 images_pivoted <-
   images %>%
   select(Metadata_Plate,  Metadata_Well, matches("^URL_")) %>%
@@ -154,4 +245,5 @@ parallel \
  wget -q -O ${IMAGE_DIR}/{1}/{4} {5}
   
 ```
+
 
