@@ -8,12 +8,14 @@ dependencies:
 - conda-forge::numpy=1.16.2
 - conda-forge::scikit-learn=0.20.3
 - conda-forge::umap-learn=0.3.8
+- conda-forge::joblib=0.16.0
 - conda-forge::matplotlib=3.0.3
 - conda-forge::seaborn=0.9.0
 - conda-forge::plotnine=0.5.1
 - conda-forge::jupyter=1.0.0
 - conda-forge::ipykernel=5.1.0
 - conda-forge::nb_conda_kernels=2.2.1
+- conda-forge::jupyter_contrib_nbextensions=0.5.1
 - conda-forge::rpy2=2.9.4
 - conda-forge::simplegeneric=0.8.1
 - conda-forge::r-stringr=1.3.1
@@ -37,3 +39,5 @@ dependencies:
 - conda-forge::r-curl=3.2
 - conda-forge::r-futile.logger=1.4.3
 - conda-forge::r-knitr=1.20
+- pip:
+  - git+https://github.com/cytomining/pycytominer@02ed6647a0913e9f0b28cbafa97766d55eeffd20
